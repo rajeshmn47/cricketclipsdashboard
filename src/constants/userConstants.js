@@ -63,13 +63,13 @@ function geturl() {
         // return "http://31.97.61.35:3000";
         // return "https://fango11.duckdns.org"
         // return "https://fango11.duckdns.org"
-        return "http://localhost:8000";
+        // return "http://localhost:8000";
         // return 'http://192.168.237.175:8000';
         // return 'http://46.28.44.4:8000';
         // return "https://dreamelevenclonebackend-g4iw.onrender.com";
         // return "https://fantasycricket4u.com";
         // return "https://backend.dreambet11.io";
-        // return "https://fango11.duckdns.org";
+        return "https://fango11.duckdns.org";
         // return "https://mangogames.fun/api";
     }
     // return "https://dreamelevenclonebackend-7l34.onrender.com";
@@ -100,5 +100,5 @@ export const URL = geturl();
 export const HTTPS_URL = "https://gamizo.duckdns.org";
 export const FURL = getfrontendurl();
 //export const NEW_URL = "https://dream11bet.duckdns.org"
-//export const NEW_URL = "https://fango11.duckdns.org"
-export const NEW_URL = "http://localhost:8000"
+export const NEW_URL = "https://fango11.duckdns.org"
+//export const NEW_URL = "http://localhost:8000"
