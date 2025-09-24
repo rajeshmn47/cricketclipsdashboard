@@ -248,6 +248,10 @@ export default function Dashboard() {
           //if (clip.commentary?.toLowerCase().includes(value)) return true;
         }
 
+        if(key=="reported"){
+          return clip?.reported==true
+        }
+
         // Default: string includes (case-insensitive)
         //console.log(clipValue, key, value, 'clip value two')
         return clipValue && String(clipValue).toLowerCase().includes(String(value).toLowerCase());
@@ -394,6 +398,7 @@ export default function Dashboard() {
   const handleDelete = async (clip) => {
     //if (!confirm("Delete all selected clips?")) return
     await axios.delete(`${URL}/auth/delete-clip/${clip._id}`);
+    setIsDeleteMode(false)
     setClips(prev => prev.filter(c => c._id !== clip._id));
   }
 
@@ -472,6 +477,19 @@ export default function Dashboard() {
     setShowPlaylistModal(false);
   };
 
+  const handleDeleteClick = (clip) => {
+    setSelectedClip(clip)
+    setIsDeleteMode(true)
+  }
+
+  const handleReportClick = async (clip) => {
+    await API.post(`${URL}/clips/report`, { clipId: clip._id });
+    setClips(prev =>
+      prev.map(c =>
+        c._id === clip._id ? { ...c, reported: true } : c
+      )
+    );
+  }
 
   //console.log(filterValues, clips, 'filterValues');
   //console.log(filteredClips, 'filteredClips');
@@ -648,7 +666,7 @@ export default function Dashboard() {
                 className="absolute top-2 right-2 border border-blue-400 bg-white/80"
               />
               {isAdmin && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="border-blue-300 text-xs sm:text-base">Edit</Button>
@@ -661,10 +679,27 @@ export default function Dashboard() {
                     variant="destructive"
                     size="sm"
                     className='text-white bg-red-500 border border-red-300 hover:bg-red-600 text-xs sm:text-base'
-                    onClick={() => handleDelete(clip)}
+                    onClick={() => handleDeleteClick(clip)}
                   >
                     Delete
                   </Button>
+                  {clip?.reported ?
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className='text-white bg-red-100 border border-red-100 hover:bg-red-100 text-xs sm:text-base'
+                      onClick={() => handleReportClick(clip)}
+                    >
+                      Reported
+                    </Button> :
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className='text-white bg-red-500 border border-red-300 hover:bg-red-600 text-xs sm:text-base'
+                      onClick={() => handleReportClick(clip)}
+                    >
+                      Report
+                    </Button>}
                   <Button
                     variant="secondary"
                     size="sm"
@@ -774,6 +809,34 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {isDeleteMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg">
+            <h2 className="text-lg font-bold mb-4">Confirm Delete</h2>
+
+            <p className="mb-4 text-gray-700">
+              Are you sure you want to delete this clip?
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setIsDeleteMode(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className='text-white bg-red-500 border border-red-300 hover:bg-red-600 text-xs sm:text-base'
+                onClick={() => handleDelete(selectedClip)} // your delete function
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

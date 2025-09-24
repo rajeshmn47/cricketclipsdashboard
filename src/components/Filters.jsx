@@ -254,8 +254,13 @@ function Filters({ values, onChange, clips }) {
     { id: "sco", name: "Scotland" }
   ]
 
+  const reportedOptions = [
+    { id: "reported", name: "reported" },
+    { id: "notReported", name: "not reported" }
+  ]
+
   const filterConfig = [
-    { type: "searchable", label: "Batsman", key: "batsman", options: uniqueBatsmen },
+    { type: "select", label: "Reported", key: "reported", options: reportedOptions },
     { type: "searchable", label: "Bowler", key: "bowler", options: uniqueBowler },
     { type: "searchable", label: "Team", key: "batting_team", options: teamOptions },
     {
@@ -327,7 +332,7 @@ function Filters({ values, onChange, clips }) {
 
   // Define which filters are basic (show by default)
   const basicFilterKeys = [
-    "batsman",
+    "reported",
     "bowler",
     "batting_team",
     "series"
