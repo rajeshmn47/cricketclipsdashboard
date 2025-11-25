@@ -53,6 +53,8 @@ export default function Dashboard() {
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [playlists, setPlaylists] = useState({});
+  const [clipModal,setClipModal] = useState(false);
+  const  [tasks,setTasks]=useState([])
 
   useEffect(() => {
     const stored = { ...localStorage };
@@ -530,6 +532,13 @@ export default function Dashboard() {
             <option value="360p">Medium (360p)</option>
             <option value="240p">Low (240p)</option>
           </select>
+             <Button
+            variant="ghost"
+            onClick={() => setClipModal(true)}
+            className="bg-green-100 text-green-700 hover:bg-green-200 text-xs sm:text-base w-full xs:w-full"
+          >
+            ➕ Create Clip
+          </Button>
           <Button
             variant="outline"
             onClick={() => navigate("/playlists")}
@@ -554,7 +563,7 @@ export default function Dashboard() {
               variant="outline"
               disabled={selectedClipIds.length === filteredClips?.length}
               onClick={() => setSelectedClipIds(filteredClips.map((clip) => clip.clip))}
-              className="border-blue-300 hover:bg-blue-50 text-xs sm:text-base w-1/2"
+              className="border-blue-300 hover:bg-blue-50 text-xs sm:text-base w-[250px]"
             >
               Select All
             </Button>
@@ -564,7 +573,7 @@ export default function Dashboard() {
               variant="outline"
               disabled={selectedClipIds.length === 0}
               onClick={() => setSelectedClipIds([])}
-              className="border-red-300 hover:bg-red-50 text-xs sm:text-base w-1/2"
+              className="border-red-300 hover:bg-red-50 text-xs sm:text-base w-[250px]"
             >
               Deselect All
             </Button>
@@ -598,6 +607,7 @@ export default function Dashboard() {
             Delete Selected ({selectedClipIds.length})
           </Button>
         </div>
+        
       )}
       <div className="flex flex-wrap items-center gap-4 justify-between mb-2">
         <p className="text-sm text-muted-foreground">
@@ -620,6 +630,16 @@ export default function Dashboard() {
           </select>
         </div>
       </div>
+      {tasks.length>0 && <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+        <h2 className="text-lg font-semibold text-yellow-800 mb-2">Pending Tasks</h2>
+        <ul className="list-disc list-inside space-y-1">
+          {tasks.map((task, index) => (
+            <li key={index} className="text-yellow-700">
+              {task.status}
+            </li>
+          ))}
+        </ul>
+      </div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 pt-4">
         {paginatedClips.map(clip => (
           <Card key={clip._id} className="relative shadow-lg hover:shadow-2xl transition-shadow bg-white/90 border-blue-100">

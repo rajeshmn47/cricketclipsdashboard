@@ -21,6 +21,9 @@ export default function Navbar() {
             <a href="/" className="hover:text-blue-600">
               Home
             </a>
+             <a href="/match-wise" className="hover:text-blue-600">
+              Matches
+            </a>
             <a href="/about" className="hover:text-blue-600">
               About
             </a>

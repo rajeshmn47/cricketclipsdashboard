@@ -261,6 +261,7 @@ function Filters({ values, onChange, clips }) {
 
   const filterConfig = [
     { type: "select", label: "Reported", key: "reported", options: reportedOptions },
+    { type: "searchable", label: "Batsman", key: "batsman", options: uniqueBatsmen },
     { type: "searchable", label: "Bowler", key: "bowler", options: uniqueBowler },
     { type: "searchable", label: "Team", key: "batting_team", options: teamOptions },
     {
@@ -333,9 +334,9 @@ function Filters({ values, onChange, clips }) {
   // Define which filters are basic (show by default)
   const basicFilterKeys = [
     "reported",
+    "batsman",
     "bowler",
-    "batting_team",
-    "series"
+    "batting_team"
   ];
 
   // Filter config for current mode
@@ -365,7 +366,7 @@ function Filters({ values, onChange, clips }) {
             {filterMode === "basic" ? "Show Advanced Filters" : "Show Fewer Filters"}
           </Button>
         </div>
-        <div className="bg-gradient-to-br from-blue-50 to-white shadow-md">
+        <div className="bg-gradient-to-br from-blue-50 to-white">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-cols-fr gap-4 p-4  rounded-xl">
             {/* Grouped: Is Catch + Caught By */}
 
