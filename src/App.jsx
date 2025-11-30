@@ -6,6 +6,7 @@ import PlaylistsPage from './pages/PlayLists';
 import Contact from './pages/Contact';
 import MatchWiseClips from './pages/MatchWiseClips';
 import MatchClips from './pages/MatchClips';
+import Tasks from './pages/Tasks';
 import Navbar from './components/Navbar';
 
 
@@ -22,6 +23,7 @@ function App() {
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/match-wise" element={<MatchWiseClips />} />
           <Route path="/match/:matchId" element={<MatchClips />} />
+          <Route path="/tasks" element={<Tasks />} />
         </Routes>
       </div>
     </Router>

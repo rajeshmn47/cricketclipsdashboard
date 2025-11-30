@@ -34,6 +34,7 @@ export default function MatchClips() {
   });
   const [tasks, setTasks] = useState([]);
   const [showTasksSection, setShowTasksSection] = useState(false);
+  const [editTask, setEditTask] = useState(null);
 
   // Resolve strength: prefer backend-provided `match.strength` when available.
   const resolveStrength = (matchObj, clipCount) => {
@@ -64,22 +65,6 @@ export default function MatchClips() {
   };
 
   useEffect(() => {
-    const fetchMatchAndClips = async () => {
-      setLoading(true);
-      try {
-        // Fetch match details
-        const matchRes = await API.get(`${URL}/getmatch/${matchId}`);
-        setMatch(matchRes.data.match);
-
-        // Fetch clips for this match
-        const clipsRes = await API.get(`${URL}/clips/getmatchclips/${matchId}`);
-        setClips(clipsRes.data || []);
-      } catch (err) {
-        console.error('Error fetching match clips:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (matchId) {
       fetchMatchAndClips();
       getTasks();
@@ -161,6 +146,38 @@ export default function MatchClips() {
     await API.post(`${URL}/tasks/mergeClips/${matchId}`);
   }
 
+  const fetchMatchAndClips = async () => {
+    setLoading(true);
+    try {
+      // Fetch match details
+      const matchRes = await API.get(`${URL}/getmatch/${matchId}`);
+      setMatch(matchRes.data.match);
+
+      // Fetch clips for this match
+      const clipsRes = await API.get(`${URL}/clips/getmatchclips/${matchId}`);
+      setClips(clipsRes.data || []);
+    } catch (err) {
+      console.error('Error fetching match clips:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTask = async (task) => {
+    try {
+      await API.put(`${URL}/tasks/update/${task._id}`, {
+        teamHomeName: task.teamHomeName,
+        status: task.status,
+      });
+      getTasks()
+      setEditTask(null);
+
+    } catch (error) {
+      console.error(error);
+      alert("Update failed");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4">
@@ -231,7 +248,7 @@ export default function MatchClips() {
         </div>
       )}
 
-      {/* Upload Toggle Button */}
+      /* Upload Toggle Button */
       <div className="flex items-center gap-2">
         {!showUploadSection && (
           <button
@@ -254,6 +271,27 @@ export default function MatchClips() {
         >
           View Tasks
         </button>
+        {/* Refresh Buttons */}
+        <button
+          onClick={async () => {
+            setLoading(true);
+            try {
+              const matchRes = await API.get(`${URL}/getmatch/${matchId}`);
+              setMatch(matchRes.data.match);
+              const clipsRes = await API.get(`${URL}/clips/getmatchclips/${matchId}`);
+              setClips(clipsRes.data || []);
+            } catch (err) {
+              console.error('Error refreshing match/clips:', err);
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          title="Refresh Clips"
+        >
+          Refresh Clips
+        </button>
+        {/* Removed global Refresh Tasks button */}
       </div>
       {showTasksSection && tasks.length > 0 && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mb-4 shadow-sm">
@@ -282,6 +320,25 @@ export default function MatchClips() {
 
                 <div className="font-medium capitalize">
                   Status: <span className="font-semibold">{task.teamHomeName}</span>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => setEditTask(task)}
+                    className="px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Optionally, you can fetch a single task by id if API supports, else just refresh all tasks
+                      await getTasks();
+                    }}
+                    className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+                    title="Refresh this task"
+                  >
+                    Refresh
+                  </button>
                 </div>
 
                 {task.status === "finished" && (
@@ -362,12 +419,12 @@ export default function MatchClips() {
                 </select>
               </div>
 
-               <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Home Team</label>
                 <input
                   type="text"
                   value={generateFormData.teamHomeName}
-                  onChange={(e) => setGenerateFormData({...generateFormData,teamHomeName:e.target.value})}
+                  onChange={(e) => setGenerateFormData({ ...generateFormData, teamHomeName: e.target.value })}
                   placeholder="home team"
                   className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
@@ -518,6 +575,7 @@ export default function MatchClips() {
                       const validated = arr.map((it, idx) => ({ ...it, _previewIndex: idx }));
                       setUploadPreview(validated);
                       await API.post(`${URL}/clips/bulk-insert`, { clips: validated })
+                      await getClips();
                     } catch (err) {
                       console.error('Failed to parse pasted JSON', err);
                       setUploadError('Invalid JSON');
@@ -716,6 +774,66 @@ export default function MatchClips() {
           </div>
         ))}
       </div>
+
+      {editTask && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white p-6 rounded-xl w-[95%] max-w-md space-y-4">
+
+            <h2 className="text-lg font-bold">Edit Task</h2>
+
+            <input
+              className="w-full border p-2 rounded"
+              value={editTask.teamHomeName || ""}
+              onChange={(e) =>
+                setEditTask({ ...editTask, teamHomeName: e.target.value })
+              }
+              placeholder="Team Name"
+            />
+
+            {(() => {
+              const statusOptions = [
+                'created',
+                'downloading',
+                'creating-matches-list',
+                'cropping',
+                'ocr',
+                'commentary',
+                'cutting',
+                'finished',
+                'error',
+              ];
+              return (
+                <select
+                  className="w-full border p-2 rounded"
+                  value={editTask.status}
+                  onChange={e => setEditTask({ ...editTask, status: e.target.value })}
+                >
+                  {statusOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                  ))}
+                </select>
+              );
+            })()}
+
+            <div className="flex justify-between pt-3">
+              <button
+                onClick={() => setEditTask(null)}
+                className="px-4 py-2 bg-gray-400 text-white rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => updateTask(editTask)}
+                className="px-4 py-2 bg-green-600 text-white rounded"
+              >
+                Save
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {clips.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500">
