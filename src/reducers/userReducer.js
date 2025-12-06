@@ -5,7 +5,8 @@ import {
   LOAD_USER_REQUEST,
   LOAD_USER_SUCCESS,
   LOAD_USER_FAIL,
-  CLEAR_ERRORS
+  CLEAR_ERRORS,
+  LOGOUT_SUCCESS
 } from '../constants/userConstants';
 
 const initialState = {
@@ -22,6 +23,8 @@ export const userLoginReducer = (state = initialState, action) => {
       return { ...state, loading: false, user: action.payload, error: null };
     case LOGIN_FAIL:
       return { ...state, loading: false, user: null, error: action.payload };
+    case LOGOUT_SUCCESS:
+      return { ...state, loading: false, user: null, error: null };
     case CLEAR_ERRORS:
       return { ...state, error: null };
     default:
@@ -30,6 +33,7 @@ export const userLoginReducer = (state = initialState, action) => {
 };
 
 export const userLoadReducer = (state = initialState, action) => {
+  console.log(action, 'user load reducer action');
   switch (action.type) {
     case LOAD_USER_REQUEST:
       return { ...state, loading: true, error: null };

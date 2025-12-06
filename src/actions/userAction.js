@@ -84,6 +84,7 @@ export const forgot = (email) => async (dispatch) => {
 export const logout = () => async (dispatch) => {
   try {
     localStorage.removeItem('token');
+    dispatch({ type: 'LOGOUT_SUCCESS' });
   } catch (error) {
     console.log(error.response, 'asdfgh');
     dispatch({ type: LOGIN_FAIL, payload: error.response.data.message });
@@ -113,8 +114,8 @@ export const loadUser = () => async (dispatch) => {
     const servertoken = localStorage.getItem('token') && localStorage.getItem('token');
     dispatch({ type: LOAD_USER_REQUEST });
     const { data } = await API.get(`${URL}/auth/loaduser`);
-    console.log(data,"user action")
     if (data.message) {
+      console.log(data.message,"user action")
       dispatch({ type: LOAD_USER_SUCCESS, payload: data.message });
     }
   } catch (error) {

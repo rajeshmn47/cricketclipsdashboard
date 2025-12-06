@@ -28,6 +28,10 @@ const filters = [
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.user || {});
+
+  useEffect(() => {
+    dispatch(loadUser());
+  }, [dispatch]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState();
   const [filterValues, setFilterValues] = useState({});

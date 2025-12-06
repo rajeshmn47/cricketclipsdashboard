@@ -574,7 +574,11 @@ export default function MatchClips() {
                       }
                       const validated = arr.map((it, idx) => ({ ...it, _previewIndex: idx }));
                       setUploadPreview(validated);
-                      await API.post(`${URL}/clips/bulk-insert`, { clips: validated })
+                      await API.post(`${URL}/clips/bulk-insert`, { clips: validated },
+                        {
+                          maxContentLength: Infinity,
+                          maxBodyLength: Infinity
+                        })
                       await getClips();
                     } catch (err) {
                       console.error('Failed to parse pasted JSON', err);
@@ -606,7 +610,8 @@ export default function MatchClips() {
             </div>
           )}
         </div>
-      )}
+      )
+      }
 
       {/* Select-all toolbar + Bulk delete */}
       <div className="flex items-center justify-between mt-3 mb-2">
@@ -775,71 +780,75 @@ export default function MatchClips() {
         ))}
       </div>
 
-      {editTask && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-          <div className="bg-white p-6 rounded-xl w-[95%] max-w-md space-y-4">
+      {
+        editTask && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+            <div className="bg-white p-6 rounded-xl w-[95%] max-w-md space-y-4">
 
-            <h2 className="text-lg font-bold">Edit Task</h2>
+              <h2 className="text-lg font-bold">Edit Task</h2>
 
-            <input
-              className="w-full border p-2 rounded"
-              value={editTask.teamHomeName || ""}
-              onChange={(e) =>
-                setEditTask({ ...editTask, teamHomeName: e.target.value })
-              }
-              placeholder="Team Name"
-            />
+              <input
+                className="w-full border p-2 rounded"
+                value={editTask.teamHomeName || ""}
+                onChange={(e) =>
+                  setEditTask({ ...editTask, teamHomeName: e.target.value })
+                }
+                placeholder="Team Name"
+              />
 
-            {(() => {
-              const statusOptions = [
-                'created',
-                'downloading',
-                'creating-matches-list',
-                'cropping',
-                'ocr',
-                'commentary',
-                'cutting',
-                'finished',
-                'error',
-              ];
-              return (
-                <select
-                  className="w-full border p-2 rounded"
-                  value={editTask.status}
-                  onChange={e => setEditTask({ ...editTask, status: e.target.value })}
+              {(() => {
+                const statusOptions = [
+                  'created',
+                  'downloading',
+                  'creating-matches-list',
+                  'cropping',
+                  'ocr',
+                  'commentary',
+                  'cutting',
+                  'finished',
+                  'error',
+                ];
+                return (
+                  <select
+                    className="w-full border p-2 rounded"
+                    value={editTask.status}
+                    onChange={e => setEditTask({ ...editTask, status: e.target.value })}
+                  >
+                    {statusOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                    ))}
+                  </select>
+                );
+              })()}
+
+              <div className="flex justify-between pt-3">
+                <button
+                  onClick={() => setEditTask(null)}
+                  className="px-4 py-2 bg-gray-400 text-white rounded"
                 >
-                  {statusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
-                  ))}
-                </select>
-              );
-            })()}
+                  Cancel
+                </button>
 
-            <div className="flex justify-between pt-3">
-              <button
-                onClick={() => setEditTask(null)}
-                className="px-4 py-2 bg-gray-400 text-white rounded"
-              >
-                Cancel
-              </button>
+                <button
+                  onClick={() => updateTask(editTask)}
+                  className="px-4 py-2 bg-green-600 text-white rounded"
+                >
+                  Save
+                </button>
+              </div>
 
-              <button
-                onClick={() => updateTask(editTask)}
-                className="px-4 py-2 bg-green-600 text-white rounded"
-              >
-                Save
-              </button>
             </div>
-
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {clips.length === 0 && !loading && (
-        <div className="text-center py-8 text-gray-500">
-          No clips available for this match yet.
-        </div>
-      )}
-    </div>
+      {
+        clips.length === 0 && !loading && (
+          <div className="text-center py-8 text-gray-500">
+            No clips available for this match yet.
+          </div>
+        )
+      }
+    </div >
   );
 }

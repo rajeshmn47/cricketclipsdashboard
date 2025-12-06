@@ -117,12 +117,18 @@ export default function Tasks() {
 				<div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
 					<div className="bg-white p-6 rounded-xl w-[95%] max-w-md space-y-4">
 						<h2 className="text-lg font-bold">Edit Task</h2>
-						<input
-							className="w-full border p-2 rounded"
-							value={editTask.teamHomeName || ''}
-							onChange={e => setEditTask({ ...editTask, teamHomeName: e.target.value })}
-							placeholder="Team Name"
-						/>
+									<input
+										className="w-full border p-2 rounded"
+										value={editTask.teamHomeName || ''}
+										onChange={e => setEditTask({ ...editTask, teamHomeName: e.target.value })}
+										placeholder="Team Name"
+									/>
+									<input
+										className="w-full border p-2 rounded"
+										value={editTask.videoLink || ''}
+										onChange={e => setEditTask({ ...editTask, videoLink: e.target.value })}
+										placeholder="Video Link (URL)"
+									/>
 									  <select
 									    className="w-full border p-2 rounded"
 									    value={editTask.status}
