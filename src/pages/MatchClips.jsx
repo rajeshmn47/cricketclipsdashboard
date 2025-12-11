@@ -247,8 +247,6 @@ export default function MatchClips() {
           </div>
         </div>
       )}
-
-      /* Upload Toggle Button */
       <div className="flex items-center gap-2">
         {!showUploadSection && (
           <button
@@ -368,7 +366,7 @@ export default function MatchClips() {
       {/* Generate Clips Modal */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-6 shadow-lg max-w-3xl w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">Generate Clips from Video</h2>
               <button
@@ -383,63 +381,102 @@ export default function MatchClips() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* Match ID (auto-filled, read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Match ID</label>
-                <input
-                  type="text"
-                  value={matchId}
-                  readOnly
-                  className="w-full border rounded p-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                <input
-                  type="number"
-                  value={generateFormData.year}
-                  onChange={(e) => setGenerateFormData(e.target.value)}
-                  placeholder="2024"
-                  className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
+            <div className="flex flex-row gap-8">
+              {/* Left: Form */}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
-                <select
-                  value={generateFormData.format}
-                  onChange={(e) => setGenerateFormData(e.target.value)}
-                  className="w-full border rounded p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select format</option>
-                  <option value="t20">T20</option>
-                  <option value="odi">ODI</option>
-                  <option value="test">Test</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Home Team</label>
-                <input
-                  type="text"
-                  value={generateFormData.teamHomeName}
-                  onChange={(e) => setGenerateFormData({ ...generateFormData, teamHomeName: e.target.value })}
-                  placeholder="home team"
-                  className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Video Link Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Video Link</label>
-                <input
-                  type="text"
-                  value={generateFormData.videoLink}
-                  onChange={(e) => setGenerateFormData({ ...generateFormData, videoLink: e.target.value })}
-                  placeholder="https://example.com/video.mp4"
-                  className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left column: match info */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Match ID</label>
+                    <input
+                      type="text"
+                      value={matchId}
+                      readOnly
+                      className="w-full border rounded p-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <input
+                      type="number"
+                      value={generateFormData.year}
+                      onChange={(e) => setGenerateFormData({ ...generateFormData, year: e.target.value })}
+                      placeholder="2024"
+                      className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
+                    <select
+                      value={generateFormData.format}
+                      onChange={(e) => setGenerateFormData({ ...generateFormData, format: e.target.value })}
+                      className="w-full border rounded p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="">Select format</option>
+                      <option value="t20">T20</option>
+                      <option value="odi">ODI</option>
+                      <option value="test">Test</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Home Team</label>
+                    <input
+                      type="text"
+                      value={generateFormData.teamHomeName}
+                      onChange={(e) => setGenerateFormData({ ...generateFormData, teamHomeName: e.target.value })}
+                      placeholder="home team"
+                      className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+                {/* Right column: video link/upload */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Video Link</label>
+                    <input
+                      type="text"
+                      value={generateFormData.videoLink}
+                      onChange={(e) => setGenerateFormData({ ...generateFormData, videoLink: e.target.value })}
+                      placeholder="https://example.com/video.mp4"
+                      className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Or Upload Video File</label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="w-full border rounded p-2 text-sm"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append('video', file);
+                        formData.append('matchId', matchId);
+                        formData.append('videoName', matchId + '.mp4');
+                        try {
+                          setGeneratingClips(true);
+                          setGenerateError('');
+                          const res = await API.post(`http://localhost:5000/upload`, formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                          });
+                          // Optionally, set the videoLink field to the returned URL
+                          if (res.data?.videoUrl) {
+                            setGenerateFormData(f => ({ ...f, videoLink: res.data.videoUrl }));
+                            alert('Video uploaded! Video link field updated.');
+                          } else {
+                            alert('Video uploaded!');
+                          }
+                        } catch (err) {
+                          setGenerateError('Video upload failed.');
+                        } finally {
+                          setGeneratingClips(false);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {generateError && <div className="text-sm text-red-600">{generateError}</div>}
@@ -490,6 +527,22 @@ export default function MatchClips() {
                   {generatingClips ? 'Generating...' : 'Generate'}
                 </button>
               </div>
+            </div>
+            {/* Right: Video Preview or Instructions */}
+            <div className="flex-1 pl-6 flex flex-col items-center justify-center">
+              {generateFormData.videoLink ? (
+                <video
+                  src={generateFormData.videoLink}
+                  controls
+                  className="w-full max-w-xs rounded shadow border"
+                  style={{ minHeight: 200 }}
+                />
+              ) : (
+                <div className="text-gray-500 text-center">
+                  <div className="mb-2 font-semibold">Video Preview</div>
+                  <div className="text-xs">Paste a video link or upload a video file to preview it here.</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
