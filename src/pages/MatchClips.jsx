@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Filters from '../components/Filters';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { URL, NEW_URL } from '../constants/userConstants';
@@ -9,6 +10,9 @@ import { API } from '@/actions/userAction';
 export default function MatchClips() {
   const { matchId } = useParams();
   const [clips, setClips] = useState([]);
+  const [filterValues, setFilterValues] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [merging, setMerging] = useState(false);
   const [match, setMatch] = useState(null);
@@ -178,6 +182,230 @@ export default function MatchClips() {
     }
   };
 
+  const filteredClips = clips
+    .filter((clip) => {
+      return Object.entries(filterValues).every(([key, value]) => {
+        if (!value) return true;
+        const clipValue = clip[key];
+        //console.log(clipValue, key, value, 'clip value')
+        // Semantic matching for shotType, direction, ballType
+        if (["shotType", "direction", "ballType", "isCleanBowled", "connection"].includes(key)) {
+          if (key == "isCleanBowled") {
+            value = "isCleanBowled"
+          }
+          return (
+            matchesWithSynonyms(clip.commentary, value, key)
+          );
+        }
+        if (searchTerm) {
+          if (clip?.commentary?.toLowerCase()?.includes(searchTerm)) {
+            //return true;
+          }
+        }
+        // Keeper Catch filter logic
+        if (key === 'isKeeperCatch') {
+          const commentary = clip.commentary?.toLowerCase() || "";
+          const keeperCatchSynonyms = cricketSynonyms.keeperCatch?.keeper_catch || [];
+          const catches = keeperCatchSynonyms.some(syn =>
+            clip.commentary?.toLowerCase().includes(syn.toLowerCase())
+          );
+          if (clip?.event?.toLowerCase() == "wicket") {
+            console.log(catches, clip?.commentary, 'catches');
+            return catches;
+          }
+          else {
+            return false;
+          }
+        }
+        if (key === 'caughtBy') {
+          console.log('caught by is selected')
+          let values = value?.split(" ")
+          if (clip?.commentary?.toLowerCase().includes(`caught by ${values[1]?.toLowerCase()}`) || clip?.commentary?.toLowerCase().includes(`caught by ${values[0]?.toLowerCase()}`)) {
+            if (clip?.batsman?.toLowerCase() == value?.toLowerCase()) {
+              return false;
+            }
+            if (clip?.bowler?.toLowerCase() == value?.toLowerCase()) {
+              return false;
+            }
+            //const fieldersNamedSame = clips.filter(player =>
+            ////  player.toLowerCase().includes(values[0]?.toLowerCase()) || player.toLowerCase().includes(values[1]?.toLowerCase())
+            //);
+            let droppedByValue = value?.split(" ")?.[0]?.toLowerCase();
+            let droppedByValue2 = value?.split(" ")?.[1]?.toLowerCase();
+            console.log(values, values?.length, droppedByValue, droppedByValue2, 'testValue');
+            if (values?.length == 3) {
+              let values = value?.split(" ")
+              droppedByValue2 = [values[1], values[2]]?.join(" ")?.toLowerCase();
+              if (clip?.commentary?.toLowerCase().includes(`caught by ${droppedByValue2.toLowerCase()}`)) {
+                return true;
+              }
+            }
+            else {
+              return true;
+            }
+          }
+          else {
+            return false;
+          }
+        }
+        if (key === 'isWicket') return clip.event?.includes('WICKET');
+        if (key === 'isFour') return clip.event?.includes('FOUR');
+        if (key === 'isSix') return clip.event?.includes('SIX');
+        if (key === 'isLofted') {
+          // Only filter if isLofted is true
+          if (!value) return true;
+          const comm = clip.commentary?.toLowerCase() || "";
+          const shotType = clip.shotType?.toLowerCase() || "";
+          // Synonyms for lofted
+          const loftedSynonyms = cricketSynonyms?.lofted?.lofted || [];
+          // Match in commentary or shotType
+          return (
+            loftedSynonyms.some(syn => comm.includes(syn) || shotType.includes(syn))
+          );
+        }
+        if (key === 'isGrounded') {
+          if (!value) return true;
+          const comm = clip.commentary?.toLowerCase() || "";
+          const shotType = clip.shotType?.toLowerCase() || "";
+          // Synonyms for grounded shots
+          const groundedSynonyms = [
+            "along the ground",
+            "kept it down",
+            "keeps it down",
+            "kept on the ground",
+            "along ground",
+            "grounded",
+            "kept low",
+            "keeps it low"
+          ];
+          // Should NOT match any lofted synonyms
+          const loftedSynonyms = cricketSynonyms.lofted || [];
+          // Must match a grounded synonym and NOT a lofted synonym
+          return (
+            groundedSynonyms.some(syn => comm.includes(syn) || shotType.includes(syn)) ||
+            !loftedSynonyms.some(syn => comm.includes(syn) || shotType.includes(syn))
+          );
+        }
+
+        // Example for duration range (adjust as per your data)
+        if (key === 'durationRange') {
+          const duration = clip.duration;
+          if (value === '0-2') return duration >= 0 && duration < 2;
+          if (value === '2-5') return duration >= 2 && duration < 5;
+          if (value === '5-10') return duration >= 5 && duration < 10;
+          if (value === '10+') return duration >= 10;
+          return true;
+        }
+
+        // Additional semantic matching for runOutBy
+        if (key === 'runOutBy') {
+          // Only filter if isRunout is also selected
+          if (!filterValues.isRunout) return true;
+          let values = value?.split(" ");
+          let droppedByValue = value?.split(" ")?.[0]?.toLowerCase();
+          let droppedByValue2 = value?.split(" ")?.[1]?.toLowerCase();
+          console.log(values, values?.length, droppedByValue, droppedByValue2, 'testValue');
+          if (values?.length == 3) {
+            let values = value?.split(" ")
+            droppedByValue2 = [values[1], values[2]]?.join(" ")?.toLowerCase();
+          }
+          const runOutByValue = values[1]?.toLowerCase();
+          // Try to match in a dedicated runOutBy field if present
+          //if (clip.runOutBy && clip.runOutBy.toLowerCase().includes(runOutByValue)) return true;
+          // Fallback: try to match in commentary
+          if (clip?.batsman?.toLowerCase().includes(runOutByValue)) {
+            return false;
+          }
+          if (clip?.bowler?.toLowerCase().includes(runOutByValue)) {
+            return false;
+          }
+          if (clip.commentary?.toLowerCase().includes(`direct hit by ${runOutByValue}`)) return true;
+          if (clip.commentary?.toLowerCase().includes(`direct-hit from ${runOutByValue}`)) return true;
+          if (clip.commentary?.toLowerCase().includes(`${runOutByValue}`)) return true;
+          // Optionally, match just the name if commentary is inconsistent
+          //if (clip.commentary?.toLowerCase().includes(runOutByValue)) return true;
+          return false;
+        }
+        if (key === 'isDropped') {
+          return clip.event?.includes('DROPPED');
+        }
+        if (key === 'innings') {
+          console.log(value, 'innings value')
+          if (value === "all") return true;
+          if (value === "1") {
+            return clip.clip?.endsWith("_1.mp4");
+          }
+          if (value === "2") {
+            return clip.clip?.endsWith("_2.mp4");
+          }
+        }
+        if (key === 'droppedBy') {
+          if (!filterValues.isDropped) return true;
+          let droppedByValue = value?.split(" ")?.[0]?.toLowerCase();
+          let droppedByValue2 = value?.split(" ")?.[1]?.toLowerCase();
+          let testValue = value?.split(" ")
+          console.log(testValue, testValue?.length, droppedByValue, droppedByValue2, 'testValue');
+          if (testValue?.length == 3) {
+            let values = value?.split(" ")
+            droppedByValue2 = [values[1], values[2]]?.join(" ")?.toLowerCase();
+          }
+          console.log(testValue, testValue?.length, droppedByValue, droppedByValue2, 'testValue');
+          // Try to match in a dedicated droppedBy field if present
+          //if (clip.droppedBy && clip.droppedBy.toLowerCase().includes(droppedByValue)) return true;
+          // Fallback: try to match in commentary
+          if (clip.batsman?.toLowerCase().includes(droppedByValue)) return false;
+          if (clip.batsman?.toLowerCase().includes(droppedByValue2)) return false;
+          if (clip.bowler?.toLowerCase().includes(droppedByValue)) return false;
+          //if (clip.commentary?.toLowerCase().includes(`${droppedByValue}`)) return true;
+          // Optionally, match just the name if commentary is inconsistent
+          if (clip.commentary?.toLowerCase().includes(droppedByValue)) return true;
+          if (clip.commentary?.toLowerCase().includes(droppedByValue2)) return true;
+          // Optionally, match just the name if commentary is inconsistent
+          //if (clip.commentary?.toLowerCase().includes(droppedByValue2)) return true;
+          return false;
+        }
+        if (key == "connection") {
+          //if (clip.commentary?.toLowerCase().includes(value)) return true;
+        }
+
+        if (key == "reported") {
+          if (value === "reported") {
+            return clip?.reported === true;
+          }
+          if (value === "notReported") {
+            return !clip?.reported;
+          }
+          return true;
+        }
+
+        if (key === "flagged") {
+          if (value === "flagged") {
+            return clip?.flag?.isFlagged === true;
+          } else if (value === "notFlagged") {
+            return !clip?.flag?.isFlagged;
+          }
+          return true;
+        }
+
+        if (key === "flagReason") {
+          if (!value) return true;
+          return clip?.flag?.reason === value;
+        }
+
+        if (key === "reviewStatus") {
+          if (!value) return true;
+          return clip?.flag?.reviewStatus === value;
+        }
+
+        // Default: string includes (case-insensitive)
+        //console.log(clipValue, key, value, 'clip value two')
+        return clipValue && String(clipValue).toLowerCase().includes(String(value).toLowerCase());
+      });
+    }).filter((clip) => {
+      if (!searchTerm) return true;
+      return clip.commentary?.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+
   if (loading) {
     return (
       <div className="p-4">
@@ -197,6 +425,36 @@ export default function MatchClips() {
 
   return (
     <div className="p-4 space-y-6">
+      {/* Filters Section */}
+      <div className="mb-4">
+        {!showFilters ? (
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => setShowFilters(true)}
+          >
+            Open Filters
+          </button>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                placeholder="Search clips, players, events..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="border rounded p-2 text-sm w-64"
+              />
+              <button
+                className="ml-2 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
+                onClick={() => setShowFilters(false)}
+              >
+                Close Filters
+              </button>
+            </div>
+            <Filters values={filterValues} onChange={(key, value) => setFilterValues(f => ({ ...f, [key]: value }))} clips={clips} />
+          </div>
+        )}
+      </div>
       {/* Match Header */}
       {match && (
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
@@ -264,7 +522,10 @@ export default function MatchClips() {
           + Generate Clips from Video
         </button>
         <button
-          onClick={() => setShowTasksSection(true)}
+          onClick={() => {
+            setShowTasksSection(true)
+            getTasks()
+          }}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
         >
           View Tasks
@@ -514,6 +775,8 @@ export default function MatchClips() {
                       alert(`Successfully generated clips from video!`);
                       setShowGenerateModal(false);
                       setVideoLink('');
+                      getTasks()
+                      setShowTasksSection(true)
                     } catch (err) {
                       console.error('Generate clips failed', err);
                       setGenerateError(err.response?.data?.error || 'Failed to generate clips. Check the video link and try again.');
@@ -632,7 +895,8 @@ export default function MatchClips() {
                           maxContentLength: Infinity,
                           maxBodyLength: Infinity
                         })
-                      await getClips();
+                      const clipsRes = await API.get(`${URL}/clips/getmatchclips/${matchId}`);
+                      setClips(clipsRes.data || []);
                     } catch (err) {
                       console.error('Failed to parse pasted JSON', err);
                       setUploadError('Invalid JSON');
@@ -649,19 +913,6 @@ export default function MatchClips() {
             </div>
           </div>
 
-          {uploadError && <div className="text-sm text-red-600">{uploadError}</div>}
-
-          {uploadPreview && (
-            <div className="bg-white border border-gray-200 rounded p-2 max-h-48 overflow-auto">
-              {uploadPreview.slice(0, 20).map((it, i) => (
-                <div key={i} className="text-sm text-gray-700 py-1 border-b last:border-b-0">
-                  <div className="font-medium">{it.title || it.commentary || `Item ${i + 1}`}</div>
-                  <div className="text-xs text-gray-500">clip: {String(it.clip || '—')}</div>
-                </div>
-              ))}
-              {uploadPreview.length > 20 && <div className="text-xs text-gray-500 py-1">And {uploadPreview.length - 20} more...</div>}
-            </div>
-          )}
         </div>
       )
       }
@@ -682,7 +933,7 @@ export default function MatchClips() {
                 }
               }}
             />
-            <span className="text-sm text-gray-700">Select all ({clips.length})</span>
+            <span className="text-sm text-gray-700">Select all ({filteredClips.length})</span>
           </label>
           <span className="text-sm text-gray-500">{selectedClipIds.length} selected</span>
         </div>
@@ -732,7 +983,7 @@ export default function MatchClips() {
 
       {/* Clips Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clips.map((clip) => (
+        {filteredClips.map((clip) => (
           <div
             key={clip._id}
             className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:border-blue-300 transition-colors"

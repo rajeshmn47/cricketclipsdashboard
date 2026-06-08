@@ -12,6 +12,14 @@ import MatchClips from './pages/MatchClips';
 import Tasks from './pages/Tasks';
 import Navbar from './components/Navbar';
 import SeriesWiseClips from './pages/SeriesWiseClips';
+import WicketKeepers from './pages/WicketKeepers';
+import FastKeeperAssigner from './pages/FastestKeeperAssigner';
+import DismissalsTable from './pages/Dismissals';
+import KeeperFixDashboard from './pages/MissingWk';
+import BowlerBatsmanRivalry from '../../../cricinfo/src/pages/BatsmanBowlerRivalry';
+import AddPlayersPage from './pages/AddingPlayers';
+import ClipNameEditor from './pages/ClipnameEditor';
+import MissingHandsEditor from './pages/MissingHands';
 
 
 function App() {
@@ -35,6 +43,15 @@ function App() {
           <Route path="/match/:matchId" element={<MatchClips />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/series-wise" element={<SeriesWiseClips />} />
+          <Route path="/wicket-keepers" element={<WicketKeepers />} />
+          <Route path="/fastest-keeper-assigner" element={<FastKeeperAssigner />} />
+          <Route path="/dismissals" element={<DismissalsTable />} />
+          <Route path="/missing-wicket-keepers" element={<KeeperFixDashboard />} />
+          <Route path="/add-players" element={<AddPlayersPage />} />
+          <Route path="/clip-editor" element={<ClipNameEditor />} />
+          <Route path="*" element={<Dashboard />} />
+          <Route path="/rivalry" element={<BowlerBatsmanRivalry />} />
+          <Route path="/missing-hands" element={<MissingHandsEditor />} />
         </Routes>
       </div>
     </Router>

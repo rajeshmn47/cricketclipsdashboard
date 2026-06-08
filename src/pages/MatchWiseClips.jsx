@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { URL } from '../constants/userConstants';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API } from '@/actions/userAction';
 import { ExternalLink } from 'lucide-react';
 
@@ -15,7 +15,8 @@ export default function Dashboard() {
     const [filteredMatches, setFilteredMatches] = useState(matches); // assume `matches` is the full list
     const [selectedMatchType, setSelectedMatchType] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [selectedSeries, setSelectedSeries] = useState("");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selectedSeries, setSelectedSeries] = useState(() => searchParams.get('seriesId') || '');
     const matchTypeOptions = ['odi', 't20', 'test', 't10'];
     const categoryOptions = ['i', 'd', 'l'];
     const [important, setImportant] = useState('all');
@@ -29,7 +30,8 @@ export default function Dashboard() {
     const [totalMatches, setTotalMatches] = useState(0);
     const [showDetails, setShowDetails] = useState(false);
     const [importance, setImportance] = useState("")
-    const [sort, setSort] = useState("clipsDesc")
+    const [sort, setSort] = useState("clipsDesc");
+    const [completed, setCompleted] = useState(null);
 
     useEffect(() => {
         const fetchMatches = async () => {
@@ -57,7 +59,7 @@ export default function Dashboard() {
             }
         };
         fetchMatches();
-    }, [selectedSeries, selectedFilter, selectedCategory, selectedMatchType, currentPage, itemsPerPage, importance, sort]);
+    }, [selectedSeries, completed, selectedFilter, selectedCategory, selectedMatchType, currentPage, itemsPerPage, importance, sort]);
 
     useEffect(() => {
         const fetchSeriesList = async () => {
@@ -72,9 +74,10 @@ export default function Dashboard() {
     }, []);
 
     useEffect(() => {
-        if (matches?.length > 0 && (selectedFilter || selectedMatchType || selectedCategory)) {
+        if (matches?.length > 0) {
             const filtered = getFilteredMatches()
-            setFilteredMatches(filtered);
+            console.log("Filtered Matches:", filtered);
+            setFilteredMatches([...filtered]);
             // Don't reset page here since backend handles pagination
         }
     }, [matches, selectedFilter, selectedMatchType, selectedCategory, selectedSeries, importance])
@@ -104,58 +107,12 @@ export default function Dashboard() {
 
     const currentDate = new Date();
 
-    function getFilteredMatches2() {
-        console.log("filtering", selectedCategory, selectedMatchType)
-        const filtered = selectedFilter === 'all'
-            ? matches.filter(match => {
-                if (match.format === selectedMatchType || match.type === selectedCategory) {
-                    return true;
-                }
-                //else return true
-            }
-            )
-            : matches.filter(match => {
-                const matchDate = new Date(match.date);
-                const matchEndDate = new Date(match.enddate);
-                if (selectedFilter === 'ongoing') {
-                    return matchDate <= currentDate && matchEndDate >= currentDate;
-                } else if (selectedFilter === 'upcoming') {
-                    return matchDate > currentDate;
-                } else if (selectedFilter === 'completed') {
-                    return match?.matchlive[0]?.result?.toLowerCase() === 'complete';
-                    //return matchEndDate < currentDate;
-                } else if (selectedFilter === 'delayedOrAbandoned') {
-                    // Matches that are genuinely delayed or abandoned
-                    const isDelayedOrAbandoned = match.matchlive?.[0]?.result === 'delayed' || match.matchlive?.[0]?.result?.toLowerCase() === 'abandon';
-                    return isDelayedOrAbandoned;
-                } else if (selectedFilter === 'notUpdated') {
-                    // Matches that are not updated due to Cricbuzz API key not working
-                    if (currentDate > matchDate) {
-                        const isNotUpdated = (!match.matchlive || !match.matchlive[0]?.result) || (currentDate > matchEndDate && !(match.matchlive?.[0]?.result?.toLowerCase() == 'complete' || match.matchlive?.[0]?.result?.toLowerCase() == 'abandon'));
-                        return isNotUpdated;
-                    }
-                    else {
-                        return false
-                    }
-                }
-                else if (selectedMatchType && match.format == selectedMatchType) {
-                    console.log("filtering", match?.type, selectedCategory, match?.format, selectedMatchType)
-                    return true;
-                }
-                else if (selectedCategory && match.type == selectedCategory) {
-                    console.log("filtering", match?.type, selectedCategory, match?.format, selectedMatchType)
-                    return true;
-                }
-                return false;
-            });
-        return filtered;
-    }
-
     function getFilteredMatches() {
         return matches.filter(match => {
             const matchDate = new Date(match.date);
             const matchEndDate = new Date(match.enddate);
-            const result = match?.matchlive?.[0]?.result?.toLowerCase();
+            console.log(selectedFilter, match?.matchlive?.result, "result")
+            const result = match?.matchlive?.result?.toLowerCase();
 
             // Apply match status filter
             if (selectedFilter === 'ongoing') {
@@ -171,16 +128,7 @@ export default function Dashboard() {
                     (currentDate > matchEndDate && !(result === 'complete' || result === 'abandon'));
                 if (!isNotUpdated) return false;
             }
-
-            // Apply match type filter
-            if (selectedMatchType !== 'all' && match.format !== selectedMatchType) return false;
-
-            // Apply category filter
-            if (selectedCategory !== 'all' && match.type !== selectedCategory) return false;
-
-            // Apply series filter
-            if (selectedSeries !== 'all' && match.seriesId !== selectedSeries) return false;
-
+            console.log("Match passed filter:", match.matchId);
             return true;
         });
     }
@@ -306,17 +254,17 @@ export default function Dashboard() {
                     { key: "ongoing", label: "Ongoing" },
                     { key: "upcoming", label: "Upcoming" },
                     { key: "completed", label: "Completed" },
-                    { key: "delayedOrAbandoned", label: "Delayed or Abandoned" },
+                    { key: "delayedOrAbandoned", label: "Delayed or Abandoned" }
                 ].map(({ key, label }) => (
                     <button
                         key={key}
                         onClick={() => filterMatches(key)}
                         className={`px-4 py-1 rounded font-semibold text-sm border h-[40px] mr-2
-        ${selectedFilter === key
+                ${selectedFilter === key
                                 ? "bg-blue-600 text-white border-blue-600"
                                 : "bg-white text-blue-600 border-blue-600 hover:bg-blue-50"
                             }
-      `}
+            `}
                     >
                         {label}
                     </button>
@@ -331,140 +279,159 @@ export default function Dashboard() {
                 return (
                     <>
                         {/* Matches */}
-                        {matches.map((match) => {
-
-                            return (
-                                <div
-                                    key={match._id}
-                                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 overflow-hidden"
-                                >
-                                    {/* Main Row - Teams, Title, Clips, Status */}
-                                    <div className="px-4 py-3 flex items-center justify-between gap-3">
-                                        {/* Teams vs */}
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            {/* Home Team */}
-                                            <div className="flex flex-col items-center gap-0.5">
-                                                {match.teamHomeFlagUrl && (
-                                                    <img
-                                                        src={match.teamHomeFlagUrl}
-                                                        alt={match.teamHomeCode}
-                                                        className="w-7 h-7 object-cover rounded-full border border-gray-300"
-                                                    />
-                                                )}
-                                                <div className="text-xs font-bold uppercase text-gray-700">{match.teamHomeCode}</div>
-                                            </div>
-
-                                            {/* VS */}
-                                            <span className="text-sm font-bold text-gray-400">vs</span>
-
-                                            {/* Away Team */}
-                                            <div className="flex flex-col items-center gap-0.5">
-                                                {match.teamAwayFlagUrl && (
-                                                    <img
-                                                        src={match.teamAwayFlagUrl}
-                                                        alt={match.teamAwayCode}
-                                                        className="w-7 h-7 object-cover rounded-full border border-gray-300"
-                                                    />
-                                                )}
-                                                <div className="text-xs font-bold uppercase text-gray-700">{match.teamAwayCode}</div>
-                                            </div>
+                        {filteredMatches.map((match) => (
+                            <div
+                                key={match._id}
+                                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 overflow-hidden"
+                            >
+                                {/* Main Row - Teams, Title, Clips, Status */}
+                                <div className="px-4 py-3 flex items-center justify-between gap-3">
+                                    {/* Teams vs */}
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {/* Home Team */}
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            {match.teamHomeFlagUrl && (
+                                                <img
+                                                    src={match.teamHomeFlagUrl}
+                                                    alt={match.teamHomeCode}
+                                                    className="w-7 h-7 object-cover rounded-full border border-gray-300"
+                                                />
+                                            )}
+                                            <div className="text-xs font-bold uppercase text-gray-700">{match.teamHomeCode}</div>
                                         </div>
 
-                                        {/* Title and Format */}
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-sm font-bold text-gray-900 truncate">{match.matchTitle}</h3>
-                                            <div className="text-xs text-gray-500">
-                                                <span className="uppercase font-medium">{match.format}</span>
-                                                {match.type && <span> • {match.type.toUpperCase()}</span>}
-                                            </div>
-                                        </div>
+                                        {/* VS */}
+                                        <span className="text-sm font-bold text-gray-400">vs</span>
 
-                                        {/* Clips Badge */}
-                                        <div className="flex-shrink-0 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-center">
-                                            <div className="text-lg font-bold">{match.clipsCount || 0}</div>
-                                            <div className="text-xs font-medium">Clips</div>
+                                        {/* Away Team */}
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            {match.teamAwayFlagUrl && (
+                                                <img
+                                                    src={match.teamAwayFlagUrl}
+                                                    alt={match.teamAwayCode}
+                                                    className="w-7 h-7 object-cover rounded-full border border-gray-300"
+                                                />
+                                            )}
+                                            <div className="text-xs font-bold uppercase text-gray-700">{match.teamAwayCode}</div>
                                         </div>
-
-                                        {/* Status Badge */}
-                                        <div className="flex-shrink-0">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${match.matchStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                                                match.matchStatus === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                                                    match.matchStatus === 'upcoming' ? 'bg-orange-100 text-orange-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {match.matchStatus?.toUpperCase() || 'PENDING'}
-                                            </span>
-                                        </div>
-
-                                        {/* More Details Toggle */}
-                                        <button
-                                            onClick={() => setShowDetails(!showDetails)}
-                                            className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition"
-                                        >
-                                            {showDetails ? '▼' : '▶'}
-                                        </button>
                                     </div>
 
-                                    {/* Expandable Details Section */}
-                                    {showDetails && (
-                                        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-2">
-                                            {/* Strength Meter */}
-                                            {(() => {
-                                                const backend = match?.strength;
-                                                let label = 'No Clips';
-                                                let percent = 0;
-                                                let color = 'bg-gray-300';
-
-                                                if (backend && typeof backend === 'object') {
-                                                    label = backend.label || label;
-                                                    percent = Math.max(0, Math.min(100, Number(backend.percent || 0)));
-                                                    color = backend.color || (percent > 70 ? 'bg-green-500' : percent > 30 ? 'bg-amber-500' : 'bg-yellow-400');
-                                                } else if (backend !== undefined && backend !== null) {
-                                                    percent = Math.max(0, Math.min(100, Number(backend) || 0));
-                                                    label = percent === 0 ? 'No Clips' : percent <= 30 ? 'Weak' : percent <= 70 ? 'Moderate' : 'Strong';
-                                                    color = percent === 0 ? 'bg-gray-300' : percent <= 30 ? 'bg-yellow-400' : percent <= 70 ? 'bg-amber-500' : 'bg-green-500';
-                                                }
-
-                                                return (
-                                                    <div>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-xs font-semibold text-gray-700">Strength Quality</span>
-                                                            <span className="text-xs font-bold text-gray-600">{label}</span>
-                                                        </div>
-                                                        <div className="w-full h-2.5 rounded-full bg-gray-200 overflow-hidden">
-                                                            <div className={`${color} h-2.5 rounded-full transition-all duration-300`} style={{ width: `${percent}%` }} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-
-                                            {/* Date Info */}
+                                    {/* Title and Format */}
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-sm font-bold text-gray-900 truncate">{match.matchTitle}</h3>
+                                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                                            <span className="uppercase font-medium">{match.format}</span>
+                                            {match.type && <span> • {match.type.toUpperCase()}</span>}
                                             <div>
-                                                <div className="text-xs text-gray-500 font-medium mb-0.5">Start Date</div>
-                                                <div className="text-xs text-gray-700">{new Date(match.date).toLocaleDateString()} • {new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                            </div>
-
-                                            {/* Series ID */}
-                                            <div>
-                                                <div className="text-xs text-gray-500 font-medium mb-0.5">Series ID</div>
-                                                <div className="text-xs font-mono text-gray-700 break-all">{match.seriesId}</div>
+                                                {match?.matchlive?.status?.toLowerCase().includes("dls") && (
+                                                    <div className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 animate-pulse">DLS</div>
+                                                )}
+                                                {match?.matchlive?.status?.toLowerCase().includes("wet field") || match?.matchlive?.status?.toLowerCase().includes("wet outfield") && (
+                                                    <div className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 animate-pulse">DLS</div>
+                                                )}
+                                                {match?.matchlive?.result?.toLowerCase().includes("abandon") && (
+                                                    <div className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 animate-pulse">Abandoned</div>
+                                                )}
+                                                {match?.matchlive?.status?.toLowerCase().includes("rain") && (
+                                                    <div className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 animate-pulse">Rain</div>
+                                                )}
                                             </div>
                                         </div>
-                                    )}
-
-                                    {/* Footer - Action Button */}
-                                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                                        <button
-                                            className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 group"
-                                            onClick={() => handleView(match)}
-                                        >
-                                            <span>View Match Clips</span>
-                                            <ExternalLink size={16} className="group-hover:translate-x-0.5 transition-transform" />
-                                        </button>
                                     </div>
+
+                                    {/* Clips Badge */}
+                                    <div className="flex-shrink-0 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-center">
+                                        <div className="text-lg font-bold">{match.clipsCount || 0}</div>
+                                        <div className="text-xs font-small">{match?.clipsLabel}</div>
+                                        <div className="text-xs font-medium">Clips</div>
+                                    </div>
+
+                                    {/* Status Badge with completed dot */}
+                                    <div className="flex-shrink-0 flex items-center gap-1">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${match.matchStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                                            match.matchStatus === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                                                match.matchStatus === 'upcoming' ? 'bg-orange-100 text-orange-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                            }`}>
+                                            {match.matchStatus?.toUpperCase() || 'PENDING'}
+                                        </span>
+                                        {/* Show green dot if completed */}
+                                        {match.completed && (
+                                            <span
+                                                title="Completed"
+                                                className="inline-block w-3 h-3 rounded-full bg-green-500 border border-green-700 ml-1"
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* More Details Toggle */}
+                                    <button
+                                        onClick={() => setShowDetails(!showDetails)}
+                                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition"
+                                    >
+                                        {showDetails ? '▼' : '▶'}
+                                    </button>
                                 </div>
-                            );
-                        })}
+
+                                {/* Expandable Details Section */}
+                                {showDetails && (
+                                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-2">
+                                        {/* Strength Meter */}
+                                        {(() => {
+                                            const backend = match?.strength;
+                                            let label = 'No Clips';
+                                            let percent = 0;
+                                            let color = 'bg-gray-300';
+
+                                            if (backend && typeof backend === 'object') {
+                                                label = backend.label || label;
+                                                percent = Math.max(0, Math.min(100, Number(backend.percent || 0)));
+                                                color = backend.color || (percent > 70 ? 'bg-green-500' : percent > 30 ? 'bg-amber-500' : 'bg-yellow-400');
+                                            } else if (backend !== undefined && backend !== null) {
+                                                percent = Math.max(0, Math.min(100, Number(backend) || 0));
+                                                label = percent === 0 ? 'No Clips' : percent <= 30 ? 'Weak' : percent <= 70 ? 'Moderate' : 'Strong';
+                                                color = percent === 0 ? 'bg-gray-300' : percent <= 30 ? 'bg-yellow-400' : percent <= 70 ? 'bg-amber-500' : 'bg-green-500';
+                                            }
+
+                                            return (
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-xs font-semibold text-gray-700">Strength Quality</span>
+                                                        <span className="text-xs font-bold text-gray-600">{label}</span>
+                                                    </div>
+                                                    <div className="w-full h-2.5 rounded-full bg-gray-200 overflow-hidden">
+                                                        <div className={`${color} h-2.5 rounded-full transition-all duration-300`} style={{ width: `${percent}%` }} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Date Info */}
+                                        <div>
+                                            <div className="text-xs text-gray-500 font-medium mb-0.5">Start Date</div>
+                                            <div className="text-xs text-gray-700">{new Date(match.date).toLocaleDateString()} • {new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                        </div>
+
+                                        {/* Series ID */}
+                                        <div>
+                                            <div className="text-xs text-gray-500 font-medium mb-0.5">Series ID</div>
+                                            <div className="text-xs font-mono text-gray-700 break-all">{match.seriesId}</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Footer - Action Button */}
+                                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                    <button
+                                        className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 group"
+                                        onClick={() => handleView(match)}
+                                    >
+                                        <span>View Match Clips</span>
+                                        <ExternalLink size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
 
                         {/* Pagination Controls */}
                         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-lg shadow border border-gray-200">

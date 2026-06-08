@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { API } from "../actions/userAction";
+import { URL } from "../constants/userConstants";
 import { Button } from "@/components/ui/button"; // Adjust this path if needed
 import { useNavigate } from "react-router-dom";
 import { Trash2, PlayCircle, Download } from "lucide-react";
@@ -20,22 +22,21 @@ const PlaylistsPage = () => {
     const videoSrc = `${NEW_URL}/${selectedQuality == '240p' ? 'mockvideos' : selectedQuality == '360p' ? '360p' : '720p'}`;
 
     useEffect(() => {
-        const allKeys = Object.keys(localStorage);
-        const loaded = {};
-
-        allKeys.forEach((key) => {
+        const fetchBackendPlaylists = async () => {
             try {
-                const value = JSON.parse(localStorage.getItem(key));
-                if (Array.isArray(value)) {
-                    loaded[key] = value;
-                }
-            } catch (e) {
-                console.warn(`Skipping invalid JSON in localStorage key "${key}":`, e.message);
+                const res = await API.get(`${URL}/clips/playlists/all`);
+                const backend = res.data || [];
+                // Map backend playlists to { [title]: videos } for compatibility
+                const mapped = {};
+                backend.forEach(pl => {
+                    if (pl.title && Array.isArray(pl.videos)) mapped[pl.title] = pl.videos;
+                });
+                setPlaylists(mapped);
+            } catch (err) {
+                setPlaylists({});
             }
-        });
-
-        setPlaylists(loaded);
-
+        };
+        fetchBackendPlaylists();
     }, []);
 
     const handleDelete = (playlistName) => {

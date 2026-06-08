@@ -63,13 +63,13 @@ function geturl() {
         // return "http://31.97.61.35:3000";
         // return "https://fango11.duckdns.org"
         // return "https://fango11.duckdns.org"
-        // return "http://localhost:8000";
+        return "http://localhost:9000";
         // return 'http://192.168.237.175:8000';
         // return 'http://46.28.44.4:8000';
         // return "https://dreamelevenclonebackend-g4iw.onrender.com";
         // return "https://fantasycricket4u.com";
         // return "https://backend.dreambet11.io";
-        return "https://gclteam.duckdns.org";
+        // return "https://gclteam.duckdns.org";
         // return "https://mangogames.fun/api";
     }
     // return "https://dreamelevenclonebackend-7l34.onrender.com";
@@ -80,12 +80,12 @@ function geturl() {
     // return "http://dream-env.eba-6d6ds7up.us-east-1.elasticbeanstalk.com";
     // return "http://54.172.255.164";
     // return 'https://apk.thepowerplay.co';
-    // return 'http://localhost:8000';
+    return 'http://localhost:9000';
     // return 'http://46.28.44.4:8000';
     // return "https://fantasycricket4u.com";
     // return "https://dreamelevenclonebackend-g4iw.onrender.com"
     // return "https://backend.dreambet11.io";
-    return "https://gclteam.duckdns.org";
+    // return "https://gclteam.duckdns.org";
 }
 
 function getfrontendurl() {
@@ -100,5 +100,5 @@ export const URL = geturl();
 export const HTTPS_URL = "https://gamizo.duckdns.org";
 export const FURL = getfrontendurl();
 //export const NEW_URL = "https://dream11bet.duckdns.org"
-export const NEW_URL = "https://gclteam.duckdns.org"
-//export const NEW_URL = "http://localhost:8000"
+//export const NEW_URL = "https://gclteam.duckdns.org"
+export const NEW_URL = "http://localhost:8000"
