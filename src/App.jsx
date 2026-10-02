@@ -20,6 +20,8 @@ import BowlerBatsmanRivalry from '../../../cricinfo/src/pages/BatsmanBowlerRival
 import AddPlayersPage from './pages/AddingPlayers';
 import ClipNameEditor from './pages/ClipnameEditor';
 import MissingHandsEditor from './pages/MissingHands';
+import UserManagement from './pages/UserManagement';
+import FlaggedClipsPage from './pages/Flaggers';
 
 
 function App() {
@@ -52,6 +54,8 @@ function App() {
           <Route path="*" element={<Dashboard />} />
           <Route path="/rivalry" element={<BowlerBatsmanRivalry />} />
           <Route path="/missing-hands" element={<MissingHandsEditor />} />
+          <Route path="/user-management" element={<UserManagement />} />
+          <Route path="/flaggers" element={<FlaggedClipsPage />} />
         </Routes>
       </div>
     </Router>

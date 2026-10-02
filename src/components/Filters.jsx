@@ -31,8 +31,8 @@ function Filters({ values, onChange, clips, players }) {
 
   // Player options
   const playerOptions = (players || []).map(p => ({
-    id: p?.name?.toLowerCase(),
-    name: p?.name,
+    id: p?.toLowerCase(),
+    name: p,
   }))
 
   // Deduplicate fielders
@@ -293,7 +293,7 @@ function Filters({ values, onChange, clips, players }) {
     { type: "select", label: "Over Range", key: "overRange", options: [{ id: "1-6", name: "1-6" }, { id: "7-15", name: "7-15" }, { id: "16-20", name: "16-20" }] },
     { type: "select", label: "Wicket Type", key: "wicketType", options: wicketTypeOptions },
     { type: "select", label: "Shot Elevation", key: "shotElevation", options: [{ id: "all", name: "All" }, { id: "lofted", name: "Lofted" }, { id: "grounded", name: "Along the Ground" }] },
-    { type: "select", label: "Duration (sec)", key: "durationRange", options: [{ id: "0-2", name: "0-2 sec" }, { id: "2-5", name: "2-5 sec" }, { id: "5-10", name: "5-10 sec" }, { id: "10+", name: "10+ sec" }] },
+    { type: "select", label: "Duration (sec)", key: "durationRange", options: [{ id: "0-2", name: "0-2 sec" }, { id: "2-4", name: "2-4 sec" }, { id: "5-10", name: "5-10 sec" }, { id: "10+", name: "10+ sec" }] },
     { type: "select", label: "Shot Type", key: "shotType", options: shotTypes },
     { type: "select", label: "Ball Type", key: "ballType", options: ballTypes },
     { type: "select", label: "Direction", key: "direction", options: directionOptions },
@@ -326,10 +326,37 @@ function Filters({ values, onChange, clips, players }) {
       filterMode === "advanced")
   )
 
+  const sortOptions = [
+    { value: "createdAt_desc", label: "Newest First" },
+    { value: "createdAt_asc", label: "Oldest First" },
+    { value: "duration_asc", label: "Shortest First" },
+    { value: "duration_desc", label: "Longest First" },
+    { value: "over_asc", label: "Over (earliest)" },
+    { value: "event_asc", label: "Event (A-Z)" },
+  ];
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-blue-900 font-bold text-lg">Filters</span>
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <span className="text-blue-900 font-bold text-lg">Filters</span>
+          <div className="flex items-center gap-2 bg-gray-100 px-2 py-1 rounded-md">
+            <span className="text-xs text-gray-600 font-medium">Sort by:</span>
+            <Select
+              value={values.sortBy || "createdAt_desc"}
+              onValueChange={(val) => onChange("sortBy", val)}  // reuse onChange
+            >
+              <SelectTrigger className="w-[150px] h-8 text-xs bg-white">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <Button variant="outline" size="sm" onClick={() => setFilterMode(m => m === "basic" ? "advanced" : "basic")}>
           {filterMode === "basic" ? "Show Advanced Filters" : "Show Fewer Filters"}
         </Button>

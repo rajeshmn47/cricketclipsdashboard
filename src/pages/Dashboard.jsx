@@ -48,6 +48,22 @@ export default function Dashboard() {
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedClip, setSelectedClip] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [bulkUpdates, setBulkUpdates] = useState({
+    flagged: null,      // true/false/null
+    flagReason: '',
+    conflictField: '',
+    reviewStatus: '',
+    reported: null,
+  });
+  const conflictFieldOptions = [
+    { id: "batsman", name: "Batsman" }, { id: "bowler", name: "Bowler" },
+    { id: "half_clip", name: "Half Clip" }, { id: "shotType", name: "Shot Type" },
+    { id: "direction", name: "Direction" }, { id: "ballType", name: "Ball Type" },
+    { id: "lengthType", name: "Length Type" }, { id: "catchBy", name: "Caught By" },
+    { id: "droppedBy", name: "Dropped By" }, { id: "runoutBy", name: "Runout By" },
+    { id: "stumpedBy", name: "Stumped By" }
+  ];
 
   // Debounce timeout for search
   const debounceTimeout = useRef(null);
@@ -102,7 +118,7 @@ export default function Dashboard() {
       params.append('limit', itemsPerPage);
 
       if (searchTerm) params.append('search', searchTerm);
-
+      // In fetchClips, after building params:
       // Add filter values
       Object.entries(filterValues).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -184,12 +200,13 @@ export default function Dashboard() {
     setLoading(true)
     const selectedClipsObjects = clips.filter(clip =>
       selectedClipIds.includes(clip._id)
-    ).map((c) => c.clip)
-    const response = await fetch(`${NEW_URL}/merge`, {
+    ).map((c) => c._id)
+    const response = await fetch(`${URL}/auth/merge`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clips: selectedClipsObjects, quality: selectedQuality }),
     });
+
     const res = await response.json()
     const downloadUrl = `${videoSrc}/${res.file}`;
     const a = document.createElement('a');
@@ -204,7 +221,7 @@ export default function Dashboard() {
 
   const handleEditSave = async (updatedClip) => {
     try {
-      const res = await axios.put(`${URL}/clips/update-clip/${updatedClip._id}`, updatedClip)
+      const res = await API.put(`${URL}/clips/update-clip/${updatedClip._id}`, { ...updatedClip, flag: { ...updatedClip.flag, flaggedBy: user?._id } })
       const saved = res.data
       setClips(prev => prev.map(c => (c._id === saved._id ? saved : c)))
     } catch (error) {
@@ -273,7 +290,40 @@ export default function Dashboard() {
     }
   };
 
-  const isAdmin = user && user.role === "user";
+  const handleBulkUpdate = async () => {
+    // Build updates object, removing null/empty values
+    const updates = {};
+    if (bulkUpdates.flagged !== null) updates.flagged = bulkUpdates.flagged;
+    if (bulkUpdates.flagReason) updates.flagReason = bulkUpdates.flagReason;
+    if (bulkUpdates.conflictField) updates.conflictField = bulkUpdates.conflictField;
+    if (bulkUpdates.reviewStatus) updates.reviewStatus = bulkUpdates.reviewStatus;
+    if (bulkUpdates.reported !== null) updates.reported = bulkUpdates.reported;
+
+    if (Object.keys(updates).length === 0) {
+      alert('No update options selected');
+      return;
+    }
+
+    try {
+      const res = await API.post(`${URL}/clips/bulk-update`, {
+        ids: selectedClipIds,
+        updates
+      });
+      if (res.data.success) {
+        alert(res.data.message);
+        setShowBulkUpdateModal(false);
+        fetchClips(); // refresh list
+        setSelectedClipIds([]);
+      } else {
+        alert('Update failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error performing bulk update');
+    }
+  };
+
+  const isAdmin = !!user;
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(startItem + clips.length - 1, totalClips);
 
@@ -353,12 +403,15 @@ export default function Dashboard() {
 
       {/* Filters Component + Clear Filters Button */}
       <div className="relative">
-        <Filters values={filterValues} allPlayers={allPlayers} onChange={handleFilterChange} clips={clips} />
+        <Filters values={filterValues} players={allPlayers} onChange={handleFilterChange} clips={clips} />
       </div>
 
       {isAdmin && selectedClipIds.length > 0 && (
         <div className="flex justify-end">
           <Button variant="destructive" className="text-white bg-red-500 border border-red-300 hover:bg-red-600 text-xs sm:text-base" onClick={deleteSelected}>Delete Selected ({selectedClipIds.length})</Button>
+          <Button onClick={() => setShowBulkUpdateModal(true)} className="bg-purple-600 text-white">
+            Bulk Update
+          </Button>
         </div>
       )}
 
@@ -511,6 +564,108 @@ export default function Dashboard() {
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsDeleteMode(false)}>Cancel</Button>
               <Button variant="destructive" className='text-white bg-red-500 border border-red-300 hover:bg-red-600' onClick={() => handleDelete(selectedClip)}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showBulkUpdateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">Bulk Update Clips</h2>
+            <p className="text-sm text-gray-600 mb-4">Updating {selectedClipIds.length} clip(s)</p>
+            <div className="space-y-3">
+              {/* Flagged */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Flagged</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={bulkUpdates.flagged === null ? '' : bulkUpdates.flagged.toString()}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setBulkUpdates(prev => ({
+                      ...prev,
+                      flagged: val === '' ? null : val === 'true'
+                    }));
+                  }}
+                >
+                  <option value="">— No change —</option>
+                  <option value="true">Flagged</option>
+                  <option value="false">Not Flagged</option>
+                </select>
+              </div>
+
+              {/* Flag Reason */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Flag Reason</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={bulkUpdates.flagReason}
+                  onChange={e => setBulkUpdates(prev => ({ ...prev, flagReason: e.target.value }))}
+                >
+                  <option value="">— No change —</option>
+                  <option value="label_conflict">Label Conflict</option>
+                  <option value="video_mismatch">Video Mismatch</option>
+                  <option value="half_clip">Half Clip</option>
+                  <option value="multiple_clips">Multiple Clips</option>
+                  <option value="manual">Manual</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Conflict Field */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Conflict Field</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={bulkUpdates.conflictField}
+                  onChange={e => setBulkUpdates(prev => ({ ...prev, conflictField: e.target.value }))}
+                >
+                  <option value="">— No change —</option>
+                  {conflictFieldOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Review Status */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Review Status</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={bulkUpdates.reviewStatus}
+                  onChange={e => setBulkUpdates(prev => ({ ...prev, reviewStatus: e.target.value }))}
+                >
+                  <option value="">— No change —</option>
+                  <option value="pending">Pending</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+              </div>
+
+              {/* Reported */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Reported</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={bulkUpdates.reported === null ? '' : bulkUpdates.reported.toString()}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setBulkUpdates(prev => ({
+                      ...prev,
+                      reported: val === '' ? null : val === 'true'
+                    }));
+                  }}
+                >
+                  <option value="">— No change —</option>
+                  <option value="true">Reported</option>
+                  <option value="false">Not Reported</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setShowBulkUpdateModal(false)}>Cancel</Button>
+              <Button onClick={handleBulkUpdate} className="bg-purple-600 text-white">Apply to Selected</Button>
             </div>
           </div>
         </div>

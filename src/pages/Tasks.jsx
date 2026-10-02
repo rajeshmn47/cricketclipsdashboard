@@ -1,10 +1,72 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { API } from '@/actions/userAction';
 import { URL } from '../constants/userConstants';
 import { Delete, DeleteIcon, Edit, Eye, Trash, Upload } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 
+const teamOptions = [
+    "afghanistan",
+    "australia",
+    "bangladesh",
+    "canada",
+    "england",
+    "india",
+    "ireland",
+    "namibia",
+    "nepal",
+    "netherlands",
+    "new zealand",
+    "oman",
+    "pakistan",
+    "scotland",
+    "south africa",
+    "sri lanka",
+    "united arab emirates",
+    "united states of america",
+    "west indies",
+    "zimbabwe",
+    // League / franchise teams (sorted)
+    "abu dhabi knight riders",
+    "adelaide strikers",
+    "brisbane heat",
+    "chennai super kings",
+    "delhi capitals",
+    "desert vipers",
+    "dubai capitals",
+    "durban super giants",
+    "gujarat titans",
+    "gulf giants",
+    "hobart hurricanes",
+    "hyderabad kingsmen",
+    "islamabad united",
+    "joburg super kings",
+    "karachi kings",
+    "kolkata knight riders",
+    "lahore qalandars",
+    "lucknow super giants",
+    "melbourne renegades",
+    "melbourne stars",
+    "mi cape town",
+    "mi emirates",
+    "mumbai indians",
+    "multan sultans",
+    "paarl royals",
+    "perth scorchers",
+    "peshawar zalmi",
+    "pretoria capitals",
+    "punjab kings",
+    "quetta gladiators",
+    "rajasthan royals",
+    "rawalpindiz",
+    "royal challengers bengaluru",
+    "royal challengers bengaluru women",
+    "sharjah warriorz",
+    "sunrisers eastern cape",
+    "sunrisers hyderabad",
+    "sydney sixers",
+    "sydney thunder"
+];
 
 export default function Tasks() {
     const [seriesQuery, setSeriesQuery] = useState('');
@@ -31,6 +93,14 @@ export default function Tasks() {
         hotstar: "",
         youtube: ""
     });
+    const homeTeamRef = useRef(null);
+    const awayTeamRef = useRef(null);
+    const [homeTeamQuery, setHomeTeamQuery] = useState('');
+    const [awayTeamQuery, setAwayTeamQuery] = useState('');
+    const [filterHomeTeam, setFilterHomeTeam] = useState('');
+    const [showHomeTeamDropdown, setShowHomeTeamDropdown] = useState(false);
+    const [filterAwayTeam, setFilterAwayTeam] = useState('');
+    const [showAwayTeamDropdown, setShowAwayTeamDropdown] = useState(false);
 
     useEffect(() => {
         const fetchSeries = async () => {
@@ -46,6 +116,19 @@ export default function Tasks() {
 
     useEffect(() => {
         fetchCookies()
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (homeTeamRef.current && !homeTeamRef.current.contains(event.target)) {
+                setShowHomeTeamDropdown(false);
+            }
+            if (awayTeamRef.current && !awayTeamRef.current.contains(event.target)) {
+                setShowAwayTeamDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const statusOptions = [
@@ -79,6 +162,12 @@ export default function Tasks() {
             if (filterSeries) {
                 url += `&series=${filterSeries}`;
             }
+            if (homeTeamQuery || filterHomeTeam) {
+                url += `&teamHomeName=${filterHomeTeam || homeTeamQuery}`;
+            }
+            if (awayTeamQuery || filterAwayTeam) {
+                url += `&teamAwayName=${filterAwayTeam || awayTeamQuery}`;
+            }
             const { data } = await API.get(url);
             setTasks(data.tasks || []);
             setTotalPages(data.pages || 1);
@@ -95,7 +184,7 @@ export default function Tasks() {
     useEffect(() => {
         fetchTasks();
         // eslint-disable-next-line
-    }, [currentPage, itemsPerPage, filterStatus, filterSeries]);
+    }, [currentPage, awayTeamQuery, homeTeamQuery, itemsPerPage, filterStatus, filterSeries]);
 
     const handleEdit = (task) => {
         setEditTask(task);
@@ -230,131 +319,295 @@ export default function Tasks() {
         }
     };
 
+    const handleGenerateIgnoreTeams = async () => {
+        try {
+            const res = await API.get(`${URL}/tasks/generate-ignore-teams`);
+            if (res.data.success) {
+                alert(`✅ ${res.data.message}\nIgnored teams: ${res.data.ignoreTeams.join(', ')}`);
+            } else {
+                alert('Error: ' + res.data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Request failed');
+        }
+    };
+
     return (
         <div className="p-6 mx-auto max-w-6xl">
-            <div className="flex justify-between items-center mb-6">
+            {/* Header with title and action buttons */}
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <h1 className="text-2xl font-bold">Tasks</h1>
                 <div className="flex gap-2">
                     <Button onClick={() => setCookiesModalOpen(true)} className="bg-indigo-600 text-white">Manage Cookies</Button>
                     <Button onClick={() => fetchTasks()} className="bg-blue-600 text-white">Refresh</Button>
                     <Button onClick={() => setShowCreateModal(true)} className="bg-green-600 text-white">+ Create Task</Button>
+                    <Button onClick={handleGenerateIgnoreTeams} className="bg-purple-600 text-white">
+                        Generate Ignore Teams
+                    </Button>
                 </div>
             </div>
-            <div className="flex items-center gap-4 mb-4 flex-wrap">
-                <label className="text-sm font-medium text-gray-700">Items per page:</label>
-                <select
-                    className="border rounded px-2 py-1"
-                    value={itemsPerPage}
-                    onChange={e => {
-                        setItemsPerPage(Number(e.target.value));
-                        setCurrentPage(1);
-                    }}
-                >
-                    {[5, 10, 20, 50, 100].map(num => (
-                        <option key={num} value={num}>{num}</option>
-                    ))}
-                </select>
-                <label className="text-sm font-medium text-gray-700">Filter by status:</label>
-                <select
-                    className="border rounded px-2 py-1"
-                    value={filterStatus}
-                    onChange={e => {
-                        setFilterStatus(e.target.value);
-                        setCurrentPage(1);
-                    }}
-                >
-                    <option value="">All Statuses</option>
-                    {statusOptions.map(opt => (
-                        <option key={opt} value={opt}>
-                            {opt.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                        </option>
-                    ))}
-                </select>
-                <label className="text-sm font-medium text-gray-700">Filter by series:</label>
-                <div className="relative" style={{ minWidth: 220 }}>
-                    <input
-                        type="text"
-                        className="border rounded px-2 py-1 w-full"
-                        placeholder="Type to search series..."
-                        value={seriesQuery || (filterSeries ? (seriesOptions.find(opt => opt.seriesId === filterSeries)?.name || '') : '')}
-                        onChange={e => {
-                            setSeriesQuery(e.target.value);
-                            setShowSeriesDropdown(true);
-                        }}
-                        onFocus={() => setShowSeriesDropdown(true)}
-                    />
-                    {showSeriesDropdown && (
-                        <div className="absolute z-50 mt-1 w-full bg-white border rounded shadow max-h-56 overflow-auto">
-                            <div
-                                className="px-2 py-2 hover:bg-blue-50 cursor-pointer text-sm"
-                                onMouseDown={() => {
-                                    setFilterSeries('');
-                                    setSeriesQuery('');
-                                    setShowSeriesDropdown(false);
-                                    setCurrentPage(1);
+
+            {/* Filters Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {/* Items per page */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Items per page</label>
+                        <select
+                            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={itemsPerPage}
+                            onChange={e => {
+                                setItemsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                        >
+                            {[5, 10, 20, 50, 100].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Filter by status */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={filterStatus}
+                            onChange={e => {
+                                setFilterStatus(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <option value="">All Statuses</option>
+                            {statusOptions.map(opt => (
+                                <option key={opt} value={opt}>
+                                    {opt.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Home Team (searchable dropdown) */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Home Team</label>
+                        <div className="relative" ref={homeTeamRef}>
+                            <input
+                                type="text"
+                                className="w-full border rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Search home team..."
+                                value={homeTeamQuery || filterHomeTeam}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    setHomeTeamQuery(value);
+                                    setShowHomeTeamDropdown(true);
+                                    if (value === '') {
+                                        setFilterHomeTeam('');
+                                        setCurrentPage(1);
+                                    }
                                 }}
-                            >
-                                All Series
-                            </div>
-                            {seriesOptions
-                                .filter(opt => {
-                                    if (!seriesQuery) return true;
-                                    return (
-                                        (opt.name || '').toLowerCase().includes(seriesQuery.toLowerCase()) ||
-                                        (String(opt.seriesId || '').toLowerCase().includes(seriesQuery.toLowerCase()))
-                                    );
-                                })
-                                .map(opt => (
+                                onFocus={() => setShowHomeTeamDropdown(true)}
+                                onBlur={() => {
+                                    if (filterHomeTeam && !homeTeamQuery) {
+                                        setHomeTeamQuery(filterHomeTeam);
+                                    }
+                                }}
+                            />
+                            {filterHomeTeam && (
+                                <button
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        setFilterHomeTeam('');
+                                        setHomeTeamQuery('');
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            )}
+                            {showHomeTeamDropdown && (
+                                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-56 overflow-auto">
                                     <div
-                                        key={opt.seriesId}
-                                        className="px-2 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
                                         onMouseDown={() => {
-                                            setFilterSeries(opt.seriesId);
-                                            setSeriesQuery(opt.name || '');
+                                            setFilterHomeTeam('');
+                                            setHomeTeamQuery('');
+                                            setShowHomeTeamDropdown(false);
+                                            setCurrentPage(1);
+                                        }}
+                                    >
+                                        All Teams
+                                    </div>
+                                    {teamOptions
+                                        .filter(team => !homeTeamQuery || team.toLowerCase().includes(homeTeamQuery.toLowerCase()))
+                                        .map(team => (
+                                            <div
+                                                key={team}
+                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                                onMouseDown={() => {
+                                                    setFilterHomeTeam(team);
+                                                    setHomeTeamQuery(team);
+                                                    setShowHomeTeamDropdown(false);
+                                                    setCurrentPage(1);
+                                                }}
+                                            >
+                                                {team}
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Away Team (searchable dropdown) */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Away Team</label>
+                        <div className="relative" ref={awayTeamRef}>
+                            <input
+                                type="text"
+                                className="w-full border rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Search away team..."
+                                value={awayTeamQuery || filterAwayTeam}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    setAwayTeamQuery(value);
+                                    setShowAwayTeamDropdown(true);
+                                    if (value === '') {
+                                        setFilterAwayTeam('');
+                                        setCurrentPage(1);
+                                    }
+                                }}
+                                onFocus={() => setShowAwayTeamDropdown(true)}
+                                onBlur={() => {
+                                    if (filterAwayTeam && !awayTeamQuery) {
+                                        setAwayTeamQuery(filterAwayTeam);
+                                    }
+                                }}
+                            />
+                            {filterAwayTeam && (
+                                <button
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        setFilterAwayTeam('');
+                                        setAwayTeamQuery('');
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            )}
+                            {showAwayTeamDropdown && (
+                                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-56 overflow-auto">
+                                    <div
+                                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                        onMouseDown={() => {
+                                            setFilterAwayTeam('');
+                                            setAwayTeamQuery('');
+                                            setShowAwayTeamDropdown(false);
+                                            setCurrentPage(1);
+                                        }}
+                                    >
+                                        All Teams
+                                    </div>
+                                    {teamOptions
+                                        .filter(team => !awayTeamQuery || team.toLowerCase().includes(awayTeamQuery.toLowerCase()))
+                                        .map(team => (
+                                            <div
+                                                key={team}
+                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                                onMouseDown={() => {
+                                                    setFilterAwayTeam(team);
+                                                    setAwayTeamQuery(team);
+                                                    setShowAwayTeamDropdown(false);
+                                                    setCurrentPage(1);
+                                                }}
+                                            >
+                                                {team}
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Series (searchable dropdown) */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Series</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Type to search series..."
+                                value={seriesQuery || (filterSeries ? (seriesOptions.find(opt => opt.seriesId === filterSeries)?.name || '') : '')}
+                                onChange={e => {
+                                    setSeriesQuery(e.target.value);
+                                    setShowSeriesDropdown(true);
+                                }}
+                                onFocus={() => setShowSeriesDropdown(true)}
+                            />
+                            {showSeriesDropdown && (
+                                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-56 overflow-auto">
+                                    <div
+                                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                        onMouseDown={() => {
+                                            setFilterSeries('');
+                                            setSeriesQuery('');
                                             setShowSeriesDropdown(false);
                                             setCurrentPage(1);
                                         }}
                                     >
-                                        {opt.name || opt.seriesName || opt.label}
-                                        <span className="ml-2 text-gray-400 text-xs">{opt.seriesId}</span>
+                                        All Series
                                     </div>
-                                ))}
+                                    {seriesOptions
+                                        .filter(opt => {
+                                            if (!seriesQuery) return true;
+                                            return (
+                                                (opt.name || '').toLowerCase().includes(seriesQuery.toLowerCase()) ||
+                                                String(opt.seriesId).toLowerCase().includes(seriesQuery.toLowerCase())
+                                            );
+                                        })
+                                        .map(opt => (
+                                            <div
+                                                key={opt.seriesId}
+                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                                onMouseDown={() => {
+                                                    setFilterSeries(opt.seriesId);
+                                                    setSeriesQuery(opt.name || '');
+                                                    setShowSeriesDropdown(false);
+                                                    setCurrentPage(1);
+                                                }}
+                                            >
+                                                {opt.name || opt.label}
+                                                <span className="ml-2 text-xs text-gray-400">{opt.seriesId}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Pagination info + selection buttons row */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <div className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages} ({totalTasks} tasks)
+                </div>
+                <div className="flex gap-2">
+                    {selectedTaskIds.length > 0 ? (
+                        <>
+                            <span className="text-sm font-medium text-blue-700">{selectedTaskIds.length} selected</span>
+                            <Button onClick={() => setShowBulkStatusModal(true)} className="bg-purple-600 text-white text-sm">Update Status</Button>
+                            <Button onClick={deselectAllTasks} variant="outline" className="border-red-300 text-red-600 text-sm">Deselect All</Button>
+                        </>
+                    ) : tasks.length > 0 && (
+                        <Button onClick={selectAllTasks} variant="outline" className="border-blue-300 text-blue-600 text-sm">Select All</Button>
                     )}
                 </div>
-                <span className="text-xs text-gray-500">
-                    Page {currentPage} of {totalPages} ({totalTasks} tasks)
-                </span>
-                {selectedTaskIds.length > 0 && (
-                    <>
-                        <span className="text-sm font-medium text-blue-700">
-                            {selectedTaskIds.length} selected
-                        </span>
-                        <Button
-                            onClick={() => setShowBulkStatusModal(true)}
-                            className="bg-purple-600 text-white text-sm"
-                        >
-                            Update Status
-                        </Button>
-                        <Button
-                            onClick={deselectAllTasks}
-                            variant="outline"
-                            className="border-red-300 text-red-600 text-sm"
-                        >
-                            Deselect All
-                        </Button>
-                    </>
-                )}
-                {selectedTaskIds.length === 0 && tasks.length > 0 && (
-                    <Button
-                        onClick={selectAllTasks}
-                        variant="outline"
-                        className="border-blue-300 text-blue-600 text-sm"
-                    >
-                        Select All
-                    </Button>
-                )}
             </div>
+
             {loading ? (
                 <div className="text-center py-8">
                     <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
@@ -532,7 +785,7 @@ export default function Tasks() {
                 <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
                     <div className="bg-white p-4 rounded shadow mt-6">
                         <h2 className="text-lg font-bold mb-2">Manage Cookies</h2>
-
+                        <h2 className="text-lg font-bold mb-2">Hotstar</h2>
                         <textarea
                             className="w-full border p-2 rounded mb-2"
                             placeholder="Paste Hotstar cookies"
@@ -541,7 +794,7 @@ export default function Tasks() {
                                 setCookiesForm({ ...cookiesForm, hotstar: e.target.value })
                             }
                         />
-
+                        <h2 className="text-lg font-bold mb-2">YouTube</h2>
                         <textarea
                             className="w-full border p-2 rounded mb-2"
                             placeholder="Paste YouTube cookies"

@@ -15,6 +15,7 @@ import ModerationSection from '../components/ModerationSection';
 import { API } from '../actions/userAction';
 import { URL } from '../constants/userConstants';
 import { useRef } from 'react';
+import { useSelector } from 'react-redux';
 
 // Predefined options (same as in Filters component)
 const shotTypes = [
@@ -147,6 +148,25 @@ const wicketTypes = [
     { id: "keeperCatch", name: "Keeper Catch" }
 ];
 
+// ✅ New: lengthTypes array (was missing)
+const lengthTypes = [
+    { id: "yorker", name: "Yorker" },
+    { id: "full_toss", name: "Full Toss" },
+    { id: "good_length", name: "Good Length" },
+    { id: "short_of_length", name: "Short of a Length" },
+    { id: "bouncer", name: "Bouncer" },
+    { id: "wide", name: "Wide" },
+    { id: "no_ball", name: "No Ball" },
+    { id: "beamer", name: "Beamer" },
+    { id: "length_ball", name: "Length Ball" },
+    { id: "full_length", name: "Full Length" },
+    { id: "half_volley", name: "Half Volley" },
+    { id: "short_ball", name: "Short Ball" },
+    { id: "back_of_length", name: "Back of a Length" },
+    { id: "overpitched", name: "Overpitched" },
+    { id: "other", name: "Other" }
+];
+
 const fetchMatchPlayers = async (matchId) => {
     if (!matchId) return [];
     try {
@@ -159,6 +179,7 @@ const fetchMatchPlayers = async (matchId) => {
 };
 
 function EditClipForm({ clip, onSave, matchPlayers: initialMatchPlayers, allPlayers = [] }) {
+    const { user } = useSelector(state => state.user || {});
     const [form, setForm] = useState({ ...clip });
     const [matchPlayers, setMatchPlayers] = useState(initialMatchPlayers || []);
     const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -208,7 +229,7 @@ function EditClipForm({ clip, onSave, matchPlayers: initialMatchPlayers, allPlay
             'lofted', 'dropped', 'runout', 'catch'
         ];
         if (key === 'flag') {
-            setForm(prev => ({ ...prev, flag: { ...prev.flag, ...value } }));
+            setForm(prev => ({ ...prev, flag: { ...prev.flag, flaggedBy: user?._id, ...value } }));
         } else if (labelFields.includes(key)) {
             setForm(prev => ({
                 ...prev,
@@ -285,7 +306,8 @@ function EditClipForm({ clip, onSave, matchPlayers: initialMatchPlayers, allPlay
                 {renderSelect('shotType', 'Shot Type', shotTypes, 'Select shot type')}
                 {renderSelect('direction', 'Direction', directionOptions, 'Select direction')}
                 {renderSelect('ballType', 'Ball Type', ballTypes, 'Select ball type')}
-                <Input name="lengthType" value={form.labels?.lengthType || ''} onChange={(e) => handleChange('lengthType', e.target.value)} placeholder="Length Type" />
+                {/* ✅ Fixed: lengthType now uses dropdown */}
+                {renderSelect('lengthType', 'Length Type', lengthTypes, 'Select length type')}
                 {renderSelect('connection', 'Connection', connectionOptions, 'Select connection')}
                 <Input name="slowball" value={form.labels?.slowball || ''} onChange={(e) => handleChange('slowball', e.target.value)} placeholder="Slow Ball" />
                 <Input name="comesDown" value={form.labels?.comesDown || ''} onChange={(e) => handleChange('comesDown', e.target.value)} placeholder="Comes Down" />

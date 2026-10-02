@@ -4,11 +4,16 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { URL, NEW_URL } from '../constants/userConstants';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Trash } from 'lucide-react';
+import { Edit, Trash, Flag, Scissors, ExternalLink } from 'lucide-react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { API } from '@/actions/userAction';
+import { useDispatch, useSelector } from 'react-redux';
+import EditClipForm from '@/components/EditClipForm';
 
 export default function MatchClips() {
   const { matchId } = useParams();
+  const dispatch = useDispatch();
+  const { user } = useSelector(state => state.user || {});
   const [clips, setClips] = useState([]);
   const [filterValues, setFilterValues] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +44,7 @@ export default function MatchClips() {
   const [tasks, setTasks] = useState([]);
   const [showTasksSection, setShowTasksSection] = useState(false);
   const [editTask, setEditTask] = useState(null);
+  const [liveMatch, setLiveMatch] = useState(null);
 
   // Resolve strength: prefer backend-provided `match.strength` when available.
   const resolveStrength = (matchObj, clipCount) => {
@@ -156,7 +162,9 @@ export default function MatchClips() {
       // Fetch match details
       const matchRes = await API.get(`${URL}/getmatch/${matchId}`);
       setMatch(matchRes.data.match);
-
+      if (matchRes.data.livematch) {
+        setLiveMatch(matchRes.data.livematch);
+      }
       // Fetch clips for this match
       const clipsRes = await API.get(`${URL}/clips/getmatchclips/${matchId}`);
       setClips(clipsRes.data || []);
@@ -406,6 +414,8 @@ export default function MatchClips() {
       return clip.commentary?.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
+  const isAdmin = user && user.role === "admin";
+
   if (loading) {
     return (
       <div className="p-4">
@@ -420,6 +430,28 @@ export default function MatchClips() {
       </div>
     );
   }
+
+  const handleEditSave = async (updatedClip) => {
+    try {
+      const res = await API.put(`${URL}/clips/update-clip/${updatedClip._id}`, updatedClip)
+      const saved = res.data
+      setClips(prev => prev.map(c => (c._id === saved._id ? saved : c)))
+    } catch (error) {
+      console.error("Failed to update clip", error)
+      alert("Failed to update clip")
+    }
+  }
+
+  const fetchMatchPlayers = async (matchId) => {
+    if (!matchId) return [];
+    try {
+      const res = await API.get(`${URL}/getmatch/${matchId}`);
+      return [...res.data.livematch.teamHomePlayers, ...res.data.livematch.teamAwayPlayers];
+    } catch (err) {
+      console.error("Failed to fetch match players", err);
+      return [];
+    }
+  };
 
   const strength = resolveStrength(match, clips.length);
 
@@ -465,7 +497,15 @@ export default function MatchClips() {
                 <span className="uppercase">{match.format}</span>
                 {match.venue && <span> • {match.venue}</span>}
               </div>
-              {/* Strength meter */}
+
+              {/* ✅ Show match status (e.g., "Match abandoned due to rain (No toss)") */}
+              {liveMatch?.status && (
+                <div className="mt-1 text-sm font-medium text-red-600">
+                  {liveMatch.status}
+                </div>
+              )}
+
+              {/* Strength meter (unchanged) */}
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
                   <div className="font-medium">Strength: {strength.label}</div>
@@ -475,6 +515,7 @@ export default function MatchClips() {
                   <div className={`${strength.color} h-2`} style={{ width: `${strength.percent}%` }} />
                 </div>
               </div>
+
               <div className="mt-2 flex items-center gap-4">
                 <div className="flex items-center">
                   <img
@@ -982,102 +1023,135 @@ export default function MatchClips() {
       </div>
 
       {/* Clips Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 pt-4">
         {filteredClips.map((clip) => (
           <div
             key={clip._id}
-            className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:border-blue-300 transition-colors"
+            className="group relative bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden border border-gray-100"
           >
             {/* Video Preview */}
-            <div className="aspect-video bg-gray-100 relative">
+            <div className="relative aspect-video bg-black">
               <video
                 src={`${URL}/mockvideos/${clip.clip}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 controls
                 preload="metadata"
               />
+
+              {/* Selection Checkbox - top-left overlay */}
+              <div className="absolute top-2 left-2 z-10">
+                <label className="flex items-center justify-center w-6 h-6 bg-white/80 backdrop-blur-sm rounded-md shadow-sm cursor-pointer hover:bg-white transition">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    checked={selectedClipIds.includes(clip._id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedClipIds(prev => [...prev, clip._id]);
+                      } else {
+                        setSelectedClipIds(prev => prev.filter(id => id !== clip._id));
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Event Badge (bottom-left) */}
+              {clip.event && (
+                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                  {clip.event}
+                </div>
+              )}
+
+              {/* Over info (bottom-right) */}
+              {clip.over && (
+                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                  Over {clip.over}
+                </div>
+              )}
             </div>
 
             {/* Clip Info */}
             <div className="p-3 space-y-2">
+              {/* Title / Commentary */}
               <div className="text-sm font-medium text-gray-900 line-clamp-2">
                 {clip.title || clip.commentary || 'Untitled Clip'}
               </div>
-
               {clip.commentary && (
-                <p className="text-sm text-gray-500 line-clamp-2">
+                <p className="text-xs text-gray-500 line-clamp-2">
                   {clip.commentary}
                 </p>
               )}
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="text-xs text-gray-500">
-                  {clip.over && <span>Over {clip.over}</span>}
-                  {clip.event && <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded">{clip.event}</span>}
-                </div>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                {/* External link */}
+                <a
+                  href={`${URL}/mockvideos/${clip.clip}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 text-gray-500 hover:text-blue-600 rounded-md hover:bg-blue-50 transition"
+                  title="Open clip in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
 
-                <div className="flex items-center gap-3">
-                  <a
-                    href={`${URL}/mockvideos/${clip.clip}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700"
-                    title="Open clip"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                {/* Admin-only actions */}
+                {isAdmin && (
+                  <>
+                    {/* Edit */}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button
+                          className="p-1.5 text-gray-500 hover:text-blue-600 rounded-md hover:bg-blue-50 transition"
+                          title="Edit clip"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="max-h-[90vh] overflow-y-auto bg-white sm:max-w-lg md:max-w-2xl">
+                        <EditClipForm clip={clip} onSave={handleEditSave} fetchMatchPlayers={fetchMatchPlayers} />
+                      </DialogContent>
+                    </Dialog>
 
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Delete this clip? This action cannot be undone.')) return;
-                      try {
-                        setDeletingClipId(clip._id);
-                        // Primary attempt: DELETE /clips/:id
-                        await API.delete(`${URL}/clips/delete-clip/${clip._id}`);
-                        // remove from UI
-                        setClips(prev => prev.filter(c => c._id !== clip._id));
-                      } catch (err) {
-                        console.error('Failed to delete clip via DELETE, trying fallback', err);
-                        try {
-                          // Fallback: POST /clips/delete { id }
-                          await API.post(`${URL}/clips/delete`, { id: clip._id });
-                          setClips(prev => prev.filter(c => c._id !== clip._id));
-                        } catch (err2) {
-                          console.error('Delete failed', err2);
-                          alert('Failed to delete clip. Check server endpoint or console for details.');
-                        }
-                      } finally {
-                        setDeletingClipId(null);
-                      }
-                    }}
-                    disabled={deletingClipId === clip._id}
-                    className="text-red-600 hover:text-red-800 flex items-center gap-1"
-                    title="Delete clip"
-                  >
-                    {deletingClipId === clip._id ? (
-                      <span className="text-xs">Deleting...</span>
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleDeleteClick(clip)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 rounded-md hover:bg-red-50 transition"
+                      title="Delete clip"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
+
+                    {/* Report */}
+                    {clip?.reported ? (
+                      <button
+                        disabled
+                        className="p-1.5 text-gray-400 rounded-md cursor-not-allowed"
+                        title="Already reported"
+                      >
+                        <Flag className="w-4 h-4" />
+                      </button>
                     ) : (
-                      <>
-                        <Trash className="w-4 h-4" />
-                      </>
+                      <button
+                        onClick={() => handleReportClick(clip)}
+                        className="p-1.5 text-gray-500 hover:text-red-600 rounded-md hover:bg-red-50 transition"
+                        title="Report clip"
+                      >
+                        <Flag className="w-4 h-4" />
+                      </button>
                     )}
-                  </button>
-                  {/* Checkbox overlay */}
-                  <label className="bg-white/80 rounded px-1">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox h-4 w-4"
-                      checked={selectedClipIds.includes(clip._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedClipIds(prev => Array.from(new Set([...prev, clip._id])));
-                        } else {
-                          setSelectedClipIds(prev => prev.filter(id => id !== clip._id));
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
+
+                    {/* Trim */}
+                    <button
+                      onClick={() => setTrimmingClip(clip)}
+                      className="p-1.5 text-gray-500 hover:text-blue-600 rounded-md hover:bg-blue-50 transition"
+                      title="Trim clip"
+                    >
+                      <Scissors className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
